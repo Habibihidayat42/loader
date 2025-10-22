@@ -1,7 +1,7 @@
--- Fish It Updated Script v2.0 (Oct 2025) - Auto Fish & Sell Fixed
--- Educational Only - Risk Ban!
+-- Fish It Fixed Script v3.0 (Oct 2025) - Chiyo-Style Auto Fish & Sell
+-- Optimized for Delta Executor
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Fish It Hub - Updated", "DarkTheme")
+local Window = Library.CreateLib("Fish It Hub - Fixed v3.0", "DarkTheme")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -9,11 +9,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
--- Cari Remote Actual (Auto-detect jika ada)
-local Remotes = ReplicatedStorage:WaitForChild("Remotes") or ReplicatedStorage:FindFirstChild("RemoteEvent") -- Adjust berdasarkan game
-local CastRemote = Remotes:FindFirstChild("CastRod") or Remotes:FindFirstChild("FishEvent") or Remotes:FindFirstChild("StartFishing")
-local ReelRemote = Remotes:FindFirstChild("ReelIn") or Remotes:FindFirstChild("CatchFish") or Remotes:FindFirstChild("EndFishing")
-local SellRemote = Remotes:FindFirstChild("SellFish") or Remotes:FindFirstChild("SellAll") or Remotes:FindFirstChild("SellInventory")
+-- Cari Remote (Dynamic Detection)
+local function findRemote(namePattern)
+    for _, v in pairs(ReplicatedStorage:GetChildren()) do
+        if v:IsA("RemoteEvent") and v.Name:lower():find(namePattern:lower()) then
+            return v
+        end
+    end
+    return nil
+end
+
+local CastRemote = findRemote("cast") or findRemote("fish") or findRemote("start")
+local ReelRemote = findRemote("reel") or findRemote("catch") or findRemote("end")
+local SellRemote = findRemote("sell") or findRemote("inventory")
+
+-- Debug Remote Names
+if CastRemote then print("Cast Remote Found: " .. CastRemote.Name) else warn("Cast Remote Not Found!") end
+if ReelRemote then print("Reel Remote Found: " .. ReelRemote.Name) else warn("Reel Remote Not Found!") end
+if SellRemote then print("Sell Remote Found: " .. SellRemote.Name) else warn("Sell Remote Not Found!") end
 
 -- Variables
 _G.AutoFish = false
@@ -23,61 +36,73 @@ _G.AutoSell = false
 local MainTab = Window:NewTab("Main Features")
 local MainSection = MainTab:NewSection("Auto Farming")
 
--- Auto Fish Toggle (Fixed: Simulasi Cast + Auto Perfect)
-MainSection:NewToggle("Auto Fish", "Auto cast & instant catch (bypass minigame)", function(state)
+-- Auto Fish Toggle (Chiyo-Style: Bypass Minigame)
+MainSection:NewToggle("Auto Fish", "Auto cast & perfect catch (bypass minigame)", function(state)
     _G.AutoFish = state
     if state then
         spawn(function()
-            while _G.AutoFish do
+            while _G.AutoFish and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
+                -- Teleport ke fishing spot terbaik (contoh koordinat, sesuaikan via F9)
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(200, 10, 150)  -- Ancient Jungle spot
+                wait(0.5)
+
+                -- Cast rod
                 if CastRemote then
-                    CastRemote:FireServer()  -- Cast rod
+                    CastRemote:FireServer()
+                    print("Casting Rod via Remote: " .. CastRemote.Name)
                 else
-                    -- Fallback: Virtual input untuk click cast button jika ada UI
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)  -- Simulate left click
+                    warn("No Cast Remote! Using Virtual Input")
+                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
                     wait(0.1)
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
                 end
-                wait(1)  -- Wait for bite
-                
+                wait(1.5)  -- Tunggu bite (adjust sesuai timing game)
+
+                -- Auto-perfect catch (bypass shake & bar)
                 if ReelRemote then
-                    ReelRemote:FireServer()  -- Instant reel/perfect catch
+                    ReelRemote:FireServer()
+                    print("Reeling via Remote: " .. ReelRemote.Name)
                 else
-                    -- Auto-perfect reeling: Spam click untuk bar
-                    for i = 1, 10 do
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                        wait(0.05)
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    warn("No Reel Remote! Spamming Click for Minigame")
+                    for i = 1, 15 do  -- Spam click untuk reeling bar
+                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
+                        wait(0.03)
+                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
                     end
                 end
-                wait(2)  -- Cooldown per fish
+                wait(2)  -- Cooldown antar ikan
             end
         end)
     end
 end)
 
--- Auto Sell Toggle (Fixed: Clear inventory loop)
-MainSection:NewToggle("Auto Sell", "Auto sell all fish every 10s", function(state)
+-- Auto Sell Toggle (Chiyo-Style: TP to NPC + Sell)
+MainSection:NewToggle("Auto Sell", "Teleport to NPC & sell all fish", function(state)
     _G.AutoSell = state
     if state then
         spawn(function()
-            while _G.AutoSell do
+            while _G.AutoSell and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
+                -- Teleport ke sell NPC (ganti koordinat sesuai F9)
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-50, 5, 0)  -- Sell NPC pos
+                wait(0.5)
+
+                -- Sell inventory
                 if SellRemote then
-                    SellRemote:FireServer()  -- Sell all
+                    SellRemote:FireServer()
+                    print("Selling via Remote: " .. SellRemote.Name)
                 else
-                    -- Fallback: Teleport ke sell NPC + simulate click
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-50, 5, 0)  -- Koordinat sell area (ganti sesuai map, cek F9)
-                        wait(1)
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)  -- Click sell
-                    end
+                    warn("No Sell Remote! Using Virtual Click")
+                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
+                    wait(0.1)
+                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
                 end
-                wait(10)  -- Sell interval
+                wait(8)  -- Sell setiap 8 detik biar stabil
             end
         end)
     end
 end)
 
--- Teleport Section (Updated coords for new islands)
+-- Teleport Section
 local TeleportSection = MainTab:NewSection("Teleports")
 TeleportSection:NewButton("TP to Spawn", "Back to main island", function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -87,13 +112,13 @@ end)
 
 TeleportSection:NewButton("TP to Sell NPC", "Quick sell spot", function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-50, 5, 0)  -- Example sell coord; adjust via dev console
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-50, 5, 0)  -- Adjust via F9
     end
 end)
 
-TeleportSection:NewButton("TP to Ancient Jungle", "New fish spot (Halloween event)", function()
+TeleportSection:NewButton("TP to Ancient Jungle", "Best fishing spot (Halloween event)", function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(200, 10, 150)  -- Jungle coord example
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(200, 10, 150)  -- Adjust via F9
     end
 end)
 
@@ -105,7 +130,7 @@ SpeedSection:NewSlider("Walk Speed", "Boost speed", 100, 16, function(s)
     end
 end)
 
--- ESP for Fish (Updated for event fish)
+-- ESP for Fish
 local ESPSection = MainTab:NewSection("ESP")
 ESPSection:NewToggle("Fish ESP", "Highlight all fish", function(state)
     if state then
@@ -125,14 +150,14 @@ ESPSection:NewToggle("Fish ESP", "Highlight all fish", function(state)
 end)
 
 -- Notification & Anti-AFK
-Library:Notify("Updated Script Loaded! Auto Fish & Sell Fixed. Check remotes if error.", 5)
+Library:Notify("Fixed Script Loaded! Auto Fish & Sell Chiyo-Style. Check console for debug.", 5)
 
 spawn(function()
-    while wait(60) do  -- Anti-AFK every minute
+    while wait(60) do
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton2(Vector2.new(math.random(0, 1000), math.random(0, 1000)))
     end
 end)
 
-print("Fish It Script Active - Console for debug")
+print("Fish It Fixed Script v3.0 Active - Check Console for Debug")
