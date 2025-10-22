@@ -1,6 +1,6 @@
 -- Bee Hub - Project Tugas Kuliah untuk Fish It (Roblox)
 -- Dibuat oleh: Bee - Untuk Delta Executor
--- Features: Speed, Jump, Fly, ESP Players, Teleport, Auto Fish
+-- Features: Speed, Jump, Fly, ESP Players, Teleport, Auto Fish (with Bite Detection)
 -- Fleksibel untuk rod apa saja
 -- UI: Rayfield Library (Populer & Stabil di Delta)
 -- Auto Farm Dihapus
@@ -17,7 +17,7 @@ end
 
 -- Buat Window Utama
 local Window = Rayfield:CreateWindow({
-   Name = "Bee Hub v2.1 (Fish It - Fleksibel Rod)",
+   Name = "Bee Hub v2.2 (Fish It - Fleksibel Rod)",
    LoadingTitle = "Loading Bee Hub...",
    LoadingSubtitle = "by Bee",
    ConfigurationSaving = {
@@ -71,6 +71,20 @@ local function equipTool()
         warn("No fishing rod found in backpack or character!")
         return nil
     end
+end
+
+-- Fungsi untuk menemukan bobber di workspace
+local function findBobber()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character then return nil end
+
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Part") and string.find(string.lower(obj.Name), "bait") and (obj.Position - character.HumanoidRootPart.Position).Magnitude < 50 then
+            return obj
+        end
+    end
+    return nil
 end
 
 -- Tab 1: Movement
@@ -243,18 +257,6 @@ local CastHoldSlider = AutoFishTab:CreateSlider({
    end,
 })
 
-local BiteWaitSlider = AutoFishTab:CreateSlider({
-   Name = "Bite Wait Time",
-   Range = {1, 5},
-   Increment = 0.5,
-   Suffix = "s",
-   CurrentValue = 2,
-   Flag = "BiteWaitSlider",
-   Callback = function(Value)
-      _G.BiteWaitTime = Value
-   end,
-})
-
 local ReelClicksSlider = AutoFishTab:CreateSlider({
    Name = "Reel Clicks",
    Range = {10, 50},
@@ -267,8 +269,20 @@ local ReelClicksSlider = AutoFishTab:CreateSlider({
    end,
 })
 
+local BiteThresholdSlider = AutoFishTab:CreateSlider({
+   Name = "Bite Detection Threshold",
+   Range = {0.1, 1.0},
+   Increment = 0.1,
+   Suffix = " Y-drop",
+   CurrentValue = 0.5,
+   Flag = "BiteThresholdSlider",
+   Callback = function(Value)
+      _G.BiteThreshold = Value
+   end,
+})
+
 local AutoFishToggle = AutoFishTab:CreateToggle({
-   Name = "Auto Fish (Auto Equip & Simulate)",
+   Name = "Auto Fish (Bite Detection)",
    CurrentValue = false,
    Flag = "AutoFishToggle",
    Callback = function(Value)
@@ -304,15 +318,35 @@ local AutoFishToggle = AutoFishTab:CreateToggle({
                   wait(_G.CastHoldTime or 0.5)
                   VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0) -- Up
                   
-                  -- Wait for bite
-                  wait(_G.BiteWaitTime or 2)
+                  -- Tunggu bobber spawn
+                  wait(1)
+                  local bobber = findBobber()
+                  if not bobber then
+                     warn("Bobber not found!")
+                     wait(2)
+                     continue
+                  end
                   
-                  -- Reel: Rapid clicks
-                  for i = 1, (_G.ReelClicks or 20) do
-                     VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
-                     wait(0.01)
-                     VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
-                     wait(0.01)
+                  -- Detect bite by monitoring Y position drop
+                  local oldY = bobber.Position.Y
+                  local biteDetected = false
+                  while not biteDetected and _G.AutoFishEnabled do
+                     wait(0.1)
+                     local newY = bobber.Position.Y
+                     if oldY - newY > (_G.BiteThreshold or 0.5) then
+                        biteDetected = true
+                     end
+                     oldY = newY
+                  end
+                  
+                  if biteDetected then
+                     -- Reel: Rapid clicks
+                     for i = 1, (_G.ReelClicks or 20) do
+                        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
+                        wait(0.01)
+                        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
+                        wait(0.01)
+                     end
                   end
                   
                   -- Delay before next cast to avoid spam
@@ -337,8 +371,8 @@ local AutoFishToggle = AutoFishTab:CreateToggle({
 
 -- Inisialisasi nilai default
 _G.CastHoldTime = 0.5
-_G.BiteWaitTime = 2
 _G.ReelClicks = 20
+_G.BiteThreshold = 0.5
 
 -- Auto-refresh player list
 game.Players.PlayerAdded:Connect(function()
@@ -348,10 +382,10 @@ end)
 
 -- Notifikasi Selamat Datang
 Rayfield:Notify({
-   Title = "Bee Hub v2.1 Loaded!",
-   Content = "Auto Fish sekarang otomatis equip rod dan pindah mouse ke tengah layar. Posisikan karakter menghadap air, lalu aktifkan toggle. Tidak perlu klik manual lagi!",
+   Title = "Bee Hub v2.2 Loaded!",
+   Content = "Auto Fish sekarang dengan bite detection via bobber Y-position drop. Posisikan karakter menghadap air, equip rod, lalu aktifkan toggle. Sesuaikan slider untuk timing dan threshold terbaik. Ini lebih otomatis seperti script Chiyo/Seraphin!",
    Duration = 10,
    Image = 4483362458,
 })
 
-print("Bee Hub v2.1 with Auto Fish Loaded Successfully!")
+print("Bee Hub v2.2 with Advanced Auto Fish Loaded Successfully!")
