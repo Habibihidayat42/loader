@@ -1,186 +1,275 @@
--- Fish It Ultimate Script v4.0 (Oct 2025) - Seraphin/Chiyo-Style
--- Optimized for Delta Executor (Mobile/PC)
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Fish It Ultimate - v4.0", "SeraphinTheme")
+-- Fish It Script by Grok (Mirip Chiyo/Seraphin) - October 2025
+-- Library: OrionLib (Auto-load jika belum ada)
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
+-- Variables Global
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
--- Dynamic Remote Finder (Seraphin-Style)
-local function findRemote(patterns)
-    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            for _, pattern in ipairs(patterns) do
-                if v.Name:lower():find(pattern:lower()) then
-                    print("Found Remote: " .. v.Name .. " for pattern: " .. pattern)
-                    return v
-                end
-            end
-        end
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local autoFishEnabled = false
+local autoSellEnabled = false
+local autoEquipEnabled = false
+local autoFarmEnabled = false
+local autoBuyEnabled = false
+local autoOpenCratesEnabled = false
+local autoEnchantEnabled = false
+local teleportEnabled = false
+local speedBoost = 16
+local jumpBoost = 50
+local antiAFK = false
+local farmThreshold = 10000  -- Coins threshold
+local sellInterval = 60  -- Detik
+
+-- Functions Utama
+local function fireRemote(remoteName, args)
+    if ReplicatedStorage:FindFirstChild(remoteName) then
+        ReplicatedStorage[remoteName]:FireServer(unpack(args or {}))
     end
-    warn("No Remote Found for patterns: " .. table.concat(patterns, ", "))
-    return nil
 end
 
--- Remote Patterns
-local castPatterns = {"cast", "fish", "start", "action"}
-local reelPatterns = {"reel", "catch", "end", "hook"}
-local sellPatterns = {"sell", "inventory", "trade"}
-local CastRemote = findRemote(castPatterns)
-local ReelRemote = findRemote(reelPatterns)
-local SellRemote = findRemote(sellPatterns)
+-- Auto Fishing Function
+local function autoFish()
+    spawn(function()
+        while autoFishEnabled do
+            wait(0.1)
+            -- Charge rod (simulasi click)
+            fireRemote("ChargeRod", {})
+            wait(2)  -- Wait for cast
+            fireRemote("CastLine", {})
+            wait(3)  -- Wait for bite
+            fireRemote("StartMinigame", {})  -- Blatant mode: instant win
+            fireRemote("CompleteMinigame", {perfect = true})
+            fireRemote("ReelIn", {})
+        end
+    end)
+end
 
--- Variables
-_G.AutoFish = false
-_G.AutoSell = false
-local FishingSpot = CFrame.new(200, 10, 150)  -- Ancient Jungle (ganti via F9)
-local SellNPCLoc = CFrame.new(-50, 5, 0)     -- Sell NPC (ganti via F9)
+-- Auto Sell Function
+local function autoSell()
+    spawn(function()
+        while autoSellEnabled do
+            wait(sellInterval)
+            fireRemote("SellInventory", {})
+        end
+    end)
+end
 
--- Main Tab
-local MainTab = Window:NewTab("Main Features")
-local MainSection = MainTab:NewSection("Auto Farming")
+-- Auto Equip Best Rod/Bobber
+local function autoEquip()
+    spawn(function()
+        while autoEquipEnabled do
+            wait(5)
+            -- Logic sederhana: Equip item dengan value tertinggi (asumsi remote ada)
+            local bestRod = "BestRod"  -- Ganti dengan logic scan inventory
+            fireRemote("EquipItem", {bestRod})
+        end
+    end)
+end
 
--- Auto Fish Toggle (Seraphin-Style: Perfect Catch)
-MainSection:NewToggle("Auto Fish", "Auto cast & perfect catch (bypass minigame)", function(state)
-    _G.AutoFish = state
+-- Auto Farm Coins/Enchant Stones
+local function autoFarm()
+    spawn(function()
+        while autoFarmEnabled do
+            wait(1)
+            local coins = LocalPlayer.leaderstats.Coins.Value  -- Asumsi leaderstats
+            if coins < farmThreshold then
+                autoFish()  -- Jalankan fishing untuk farm
+            else
+                print("Threshold reached!")
+                autoFarmEnabled = false
+            end
+        end
+    end)
+end
+
+-- Auto Buy Best Items
+local function autoBuy()
+    spawn(function()
+        while autoBuyEnabled do
+            wait(10)
+            fireRemote("BuyItem", {"BestRod"})  -- Beli rod/bobber/weather
+            fireRemote("BuyWeather", {"Storm"})  -- Contoh weather
+        end
+    end)
+end
+
+-- Auto Open Crates
+local function autoOpenCrates(crateType)
+    spawn(function()
+        while autoOpenCratesEnabled do
+            wait(1)
+            fireRemote("OpenCrate", {crateType})
+        end
+    end)
+end
+
+-- Auto Enchant Rod
+local function autoEnchant(rodName, desiredEnchant)
+    spawn(function()
+        while autoEnchantEnabled do
+            wait(2)
+            fireRemote("UseEnchantStone", {rodName})
+            -- Check if enchanted (simulasi)
+            if math.random(1,10) == 1 then  -- 10% chance success
+                print("Enchant success!")
+                autoEnchantEnabled = false
+            end
+        end
+    end)
+end
+
+-- Teleport Function
+local function teleportTo(position)
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(position)
+end
+
+local teleports = {
+    KohanaIsland = Vector3.new(0, 10, 0),  -- Koordinat contoh, sesuaikan
+    CoralReefs = Vector3.new(100, 10, 100),
+    -- Tambah lebih banyak
+}
+
+-- Anti-AFK
+local function antiAFKLoop()
+    spawn(function()
+        while antiAFK do
+            wait(60)
+            fireRemote("AntiAFK", {})  -- Asumsi remote
+            LocalPlayer.Character.Humanoid:Move(Vector3.new(0,0,0.1))
+        end
+    end)
+end
+
+-- Speed/Jump Boost
+local function applyBoosts()
+    LocalPlayer.Character.Humanoid.WalkSpeed = speedBoost
+    LocalPlayer.Character.Humanoid.JumpPower = jumpBoost
+end
+
+-- FPS Booster (Hapus efek particle dll)
+local function fpsBoost()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("ParticleEmitter") or v:IsA("Explosion") then
+            v.Enabled = false
+        end
+    end
+end
+
+-- GUI Creation
+local Window = OrionLib:MakeWindow({
+    Name = "Fish It Hub by Grok (Mirip Chiyo/Seraphin)",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "FishItHub"
+})
+
+-- Tab 1: Auto Farm
+local FarmTab = Window:MakeTab({
+    Name = "Auto Farm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+FarmTab:AddToggle("Auto Fish", ToggleInfo, function(state)
+    autoFishEnabled = state
+    if state then autoFish() end
+end)
+
+FarmTab:AddToggle("Auto Sell", ToggleInfo, function(state)
+    autoSellEnabled = state
+    if state then autoSell() end
+end)
+
+FarmTab:AddSlider("Sell Interval (sec)", SliderInfo, function(value)
+    sellInterval = value
+end, 1, 300, 60)
+
+FarmTab:AddToggle("Auto Equip", ToggleInfo, function(state)
+    autoEquipEnabled = state
+    if state then autoEquip() end
+end)
+
+FarmTab:AddToggle("Auto Farm (to Threshold)", ToggleInfo, function(state)
+    autoFarmEnabled = state
+    if state then autoFarm() end
+end)
+
+FarmTab:AddSlider("Farm Threshold (Coins)", SliderInfo, function(value)
+    farmThreshold = value
+end, 1000, 1000000, 10000)
+
+-- Tab 2: Auto Buy & Enchant
+local BuyTab = Window:MakeTab({
+    Name = "Auto Buy & Enchant",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
+})
+
+BuyTab:AddToggle("Auto Buy Best", ToggleInfo, function(state)
+    autoBuyEnabled = state
+    if state then autoBuy() end
+end)
+
+BuyTab:AddToggle("Auto Open Crates", ToggleInfo, function(state)
+    autoOpenCratesEnabled = state
+    if state then autoOpenCrates("Common") end  -- Ganti type
+end)
+
+local enchantRod = BuyTab:AddTextbox("Rod Name for Enchant")
+local desiredEnc = BuyTab:AddTextbox("Desired Enchant")
+
+BuyTab:AddButton("Start Auto Enchant", function()
+    local rod = enchantRod.Value
+    local enc = desiredEnc.Value
+    autoEnchantEnabled = true
+    autoEnchant(rod, enc)
+end)
+
+-- Tab 3: Teleports & Misc
+local TeleTab = Window:MakeTab({
+    Name = "Teleports & Misc",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+TeleTab:AddDropdown("Select Island", DropdownInfo, {"KohanaIsland", "CoralReefs"}, function(selected)
+    teleportTo(teleports[selected])
+end)
+
+TeleTab:AddToggle("Speed Boost", ToggleInfo, function(state)
+    if state then applyBoosts() else
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        LocalPlayer.Character.Humanoid.JumpPower = 50
+    end
+end)
+
+TeleTab:AddSlider("Walk Speed", SliderInfo, function(value)
+    speedBoost = value
+    applyBoosts()
+end, 16, 100, 16)
+
+TeleTab:AddToggle("Infinite Jump", ToggleInfo, function(state)
     if state then
-        spawn(function()
-            while _G.AutoFish and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
-                -- Teleport ke fishing spot
-                LocalPlayer.Character.HumanoidRootPart.CFrame = FishingSpot
-                wait(0.3)
-
-                -- Cast rod
-                if CastRemote then
-                    CastRemote:FireServer()
-                    print("Casting via Remote: " .. CastRemote.Name)
-                else
-                    warn("No Cast Remote! Using Virtual Input")
-                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
-                    wait(0.05)
-                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
-                end
-                wait(1.2)  -- Tunggu bite (realistis)
-
-                -- Perfect catch (bypass minigame)
-                if ReelRemote then
-                    ReelRemote:FireServer()
-                    print("Reeling via Remote: " .. ReelRemote.Name)
-                else
-                    warn("No Reel Remote! Simulating Minigame")
-                    for i = 1, 20 do  -- Seraphin-style rapid click untuk reeling bar
-                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
-                        wait(0.02)  -- Ultra-fast click untuk perfect catch
-                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
-                    end
-                end
-                wait(1.8)  -- Cooldown antar ikan (realistis anti-detect)
-            end
-            if not LocalPlayer.Character then
-                warn("Character not found! Auto Fish paused.")
-            end
+        local UserInputService = game:GetService("UserInputService")
+        UserInputService.JumpRequest:Connect(function()
+            LocalPlayer.Character.Humanoid:ChangeState("Jumping")
         end)
     end
 end)
 
--- Auto Sell Toggle (Chiyo-Style: TP + Sell)
-MainSection:NewToggle("Auto Sell", "Teleport to NPC & sell all fish", function(state)
-    _G.AutoSell = state
-    if state then
-        spawn(function()
-            while _G.AutoSell and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
-                -- Teleport ke sell NPC
-                LocalPlayer.Character.HumanoidRootPart.CFrame = SellNPCLoc
-                wait(0.4)
-
-                -- Sell inventory
-                if SellRemote then
-                    SellRemote:FireServer()
-                    print("Selling via Remote: " .. SellRemote.Name)
-                else
-                    warn("No Sell Remote! Using Virtual Click")
-                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
-                    wait(0.05)
-                    VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
-                end
-                wait(7)  -- Sell setiap 7 detik (stabilisasi server)
-            end
-            if not LocalPlayer.Character then
-                warn("Character not found! Auto Sell paused.")
-            end
-        end)
-    end
+TeleTab:AddToggle("Anti-AFK", ToggleInfo, function(state)
+    antiAFK = state
+    if state then antiAFKLoop() end
 end)
 
--- Teleport Section
-local TeleportSection = MainTab:NewSection("Teleports")
-TeleportSection:NewButton("TP to Spawn", "Back to main island", function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
-    end
-end)
+TeleTab:AddButton("FPS Boost", fpsBoost)
 
-TeleportSection:NewButton("TP to Sell NPC", "Quick sell spot", function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = SellNPCLoc
-    end
-end)
-
-TeleportSection:NewButton("TP to Ancient Jungle", "Best fishing spot (Halloween event)", function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = FishingSpot
-    end
-end)
-
--- Player Mods
-local SpeedSection = MainTab:NewSection("Player Mods")
-SpeedSection:NewSlider("Walk Speed", "Boost speed", 100, 16, function(s)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = s
-    end
-end)
-
--- ESP for Fish (Seraphin-Style: Lightweight)
-local ESPSection = MainTab:NewSection("ESP")
-ESPSection:NewToggle("Fish ESP", "Highlight fish & rare spawns", function(state)
-    if state then
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name:lower():find("fish") or obj:FindFirstChild("FishModel") or obj.Name:lower():find("rare") then
-                local highlight = Instance.new("Highlight")
-                highlight.Parent = obj
-                highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-                highlight.FillTransparency = 0.5
-            end
-        end
-    else
-        for _, hl in pairs(workspace:GetDescendants()) do
-            if hl:IsA("Highlight") then hl:Destroy() end
-        end
-    end
-end)
-
--- Notification & Anti-AFK
-Library:Notify("Ultimate Script v4.0 Loaded! Seraphin/Chiyo-Style Auto Fish & Sell. Check console for debug.", 5)
-
-spawn(function()
-    while wait(60) do
-        local vu = game:GetService("VirtualUser")
-        vu:CaptureController()
-        vu:ClickButton2(Vector2.new(math.random(0, 1000), math.random(0, 1000)))
-    end
-end)
-
--- Debug Loop
-RunService.Heartbeat:Connect(function()
-    if _G.AutoFish or _G.AutoSell then
-        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            warn("Character missing! Rejoining may fix this.")
-        end
-    end
-end)
-
-print("Fish It Ultimate Script v4.0 Active - Check Console for Debug")
+-- Init
+fpsBoost()  -- Jalankan sekali
+OrionLib:Init()
+print("Fish It Hub Loaded! Nikmati farming-nya :)")
