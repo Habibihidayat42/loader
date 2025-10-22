@@ -17,7 +17,7 @@ end
 
 -- Buat Window Utama
 local Window = Rayfield:CreateWindow({
-   Name = "Bee Hub v1.9 (Fish It - Fleksibel Rod)",
+   Name = "Bee Hub v2.0 (Fish It - Fleksibel Rod)",
    LoadingTitle = "Loading Bee Hub...",
    LoadingSubtitle = "by Bee",
    ConfigurationSaving = {
@@ -32,46 +32,6 @@ local Window = Rayfield:CreateWindow({
    },
    KeySystem = false
 })
-
--- Fungsi Auto-Equip Tool (Cek backpack dan karakter)
-local function equipTool()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    local backpack = player.Backpack
-    local tool = nil
-
-    -- Cek apakah sudah ada tool di karakter
-    if character then
-        tool = character:FindFirstChildOfClass("Tool")
-        if tool and (string.find(string.lower(tool.Name), "rod") or string.find(string.lower(tool.Name), "fish")) then
-            return tool
-        end
-    end
-
-    -- Cek tool di backpack
-    for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and (string.find(string.lower(item.Name), "rod") or string.find(string.lower(item.Name), "fish")) then
-            tool = item
-            break
-        end
-    end
-
-    if tool then
-        local success, err = pcall(function()
-            tool.Parent = character
-            wait(0.7) -- Delay untuk memastikan equip
-        end)
-        if success then
-            return tool
-        else
-            warn("Failed to equip tool: " .. err)
-            return nil
-        end
-    else
-        warn("No fishing rod found in backpack or character!")
-        return nil
-    end
-end
 
 -- Tab 1: Movement
 local MovementTab = Window:CreateTab("Movement", 4483362458)
@@ -231,47 +191,72 @@ local TeleportDropdown = TeleportTab:CreateDropdown({
 -- Tab 4: Auto Fish
 local AutoFishTab = Window:CreateTab("Auto Fish", 4483362458)
 
+local CastHoldSlider = AutoFishTab:CreateSlider({
+   Name = "Cast Hold Time",
+   Range = {0.1, 1.0},
+   Increment = 0.1,
+   Suffix = "s",
+   CurrentValue = 0.5,
+   Flag = "CastHoldSlider",
+   Callback = function(Value)
+      _G.CastHoldTime = Value
+   end,
+})
+
+local BiteWaitSlider = AutoFishTab:CreateSlider({
+   Name = "Bite Wait Time",
+   Range = {1, 5},
+   Increment = 0.5,
+   Suffix = "s",
+   CurrentValue = 2,
+   Flag = "BiteWaitSlider",
+   Callback = function(Value)
+      _G.BiteWaitTime = Value
+   end,
+})
+
+local ReelClicksSlider = AutoFishTab:CreateSlider({
+   Name = "Reel Clicks",
+   Range = {10, 50},
+   Increment = 5,
+   Suffix = " clicks",
+   CurrentValue = 20,
+   Flag = "ReelClicksSlider",
+   Callback = function(Value)
+      _G.ReelClicks = Value
+   end,
+})
+
 local AutoFishToggle = AutoFishTab:CreateToggle({
-   Name = "Auto Fish (Cast & Reel)",
+   Name = "Auto Fish (Simulate Input)",
    CurrentValue = false,
    Flag = "AutoFishToggle",
    Callback = function(Value)
       _G.AutoFishEnabled = Value
       local success, err = pcall(function()
          if Value then
+            local VirtualInputManager = game:GetService("VirtualInputManager")
+            local mouse = game.Players.LocalPlayer:GetMouse()
             spawn(function()
                while _G.AutoFishEnabled do
-                  local tool = equipTool()
-                  if tool then
-                     -- Simulasi klik kiri untuk cast
-                     local successCast, errCast = pcall(function()
-                        tool:Activate()
-                     end)
-                     if not successCast then
-                        warn("Failed to cast: " .. errCast)
-                     end
-                     -- Tunggu beberapa detik untuk fish bite (sesuaikan dengan mekanisme Fish It)
-                     wait(5)
-                     -- Simulasi klik kiri lagi untuk reel
-                     local successReel, errReel = pcall(function()
-                        tool:Activate()
-                     end)
-                     if not successReel then
-                        warn("Failed to reel: " .. errReel)
-                     end
-                     -- Delay untuk menghindari spam
-                     wait(2)
-                  else
-                     warn("Auto Fish stopped: No fishing rod found")
-                     _G.AutoFishEnabled = false
-                     Rayfield:Notify({
-                        Title = "Auto Fish Error",
-                        Content = "No fishing rod found in backpack or character!",
-                        Duration = 5,
-                        Image = 4483362458,
-                     })
-                     AutoFishToggle:Set(false)
+                  -- Cast: Hold mouse button
+                  VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0) -- Down
+                  wait(_G.CastHoldTime or 0.5)
+                  VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0) -- Up
+                  
+                  -- Wait for bite
+                  wait(_G.BiteWaitTime or 2)
+                  
+                  -- Reel: Rapid clicks
+                  for i = 1, (_G.ReelClicks or 20) do
+                     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
+                     wait(0.01)
+                     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
+                     wait(0.01)
                   end
+                  
+                  -- Delay before next cast to avoid spam
+                  wait(2)
                end
             end)
          end
@@ -280,9 +265,20 @@ local AutoFishToggle = AutoFishTab:CreateToggle({
          warn("Auto Fish error: " .. err)
          _G.AutoFishEnabled = false
          AutoFishToggle:Set(false)
+         Rayfield:Notify({
+            Title = "Auto Fish Error",
+            Content = "Failed to start auto fish simulation.",
+            Duration = 5,
+            Image = 4483362458,
+         })
       end
    end,
 })
+
+-- Inisialisasi nilai default
+_G.CastHoldTime = 0.5
+_G.BiteWaitTime = 2
+_G.ReelClicks = 20
 
 -- Auto-refresh player list
 game.Players.PlayerAdded:Connect(function()
@@ -292,10 +288,10 @@ end)
 
 -- Notifikasi Selamat Datang
 Rayfield:Notify({
-   Title = "Bee Hub v1.9 Loaded!",
-   Content = "Check backpack or character for fishing rod if Auto Fish fails.",
-   Duration = 5,
+   Title = "Bee Hub v2.0 Loaded!",
+   Content = "Auto Fish sekarang menggunakan simulasi input (tanpa tool). Posisikan mouse di air, hadap air, lalu aktifkan toggle. Sesuaikan slider untuk timing terbaik.",
+   Duration = 10,
    Image = 4483362458,
 })
 
-print("Bee Hub v1.9 with Auto Fish Loaded Successfully!")
+print("Bee Hub v2.0 with Auto Fish Loaded Successfully!")
