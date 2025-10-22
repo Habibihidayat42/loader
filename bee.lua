@@ -1,7 +1,6 @@
--- =====================================================
 -- Bee Hub - Project Tugas Kuliah untuk Fish It (Roblox)
 -- Dibuat oleh: Bee - Untuk Delta Executor
--- Features: Speed, Jump, Fly, ESP Players, Teleport
+-- Features: Speed, Jump, Fly, ESP Players, Teleport, Auto Fish
 -- Fleksibel untuk rod apa saja
 -- UI: Rayfield Library (Populer & Stabil di Delta)
 -- Auto Farm Dihapus
@@ -211,6 +210,62 @@ local TeleportDropdown = TeleportTab:CreateDropdown({
    end,
 })
 
+-- Tab 4: Auto Fish
+local AutoFishTab = Window:CreateTab("Auto Fish", 4483362458)
+
+local AutoFishToggle = AutoFishTab:CreateToggle({
+   Name = "Auto Fish (Cast & Reel)",
+   CurrentValue = false,
+   Flag = "AutoFishToggle",
+   Callback = function(Value)
+      _G.AutoFishEnabled = Value
+      local success, err = pcall(function()
+         if Value then
+            spawn(function()
+               while _G.AutoFishEnabled do
+                  local tool = equipTool()
+                  if tool then
+                     -- Simulasi klik kiri untuk cast
+                     local successCast, errCast = pcall(function()
+                        tool:Activate()
+                     end)
+                     if not successCast then
+                        warn("Failed to cast: " .. errCast)
+                     end
+                     -- Tunggu beberapa detik untuk fish bite (sesuaikan dengan mekanisme Fish It)
+                     wait(5)
+                     -- Simulasi klik kiri lagi untuk reel
+                     local successReel, errReel = pcall(function()
+                        tool:Activate()
+                     end)
+                     if not successReel then
+                        warn("Failed to reel: " .. errReel)
+                     end
+                     -- Delay untuk menghindari spam
+                     wait(2)
+                  else
+                     warn("Auto Fish stopped: No tool equipped")
+                     _G.AutoFishEnabled = false
+                     Rayfield:Notify({
+                        Title = "Auto Fish Error",
+                        Content = "No fishing rod found in backpack!",
+                        Duration = 5,
+                        Image = 4483362458,
+                     })
+                     AutoFishToggle:Set(false)
+                  end
+               end
+            end)
+         end
+      end)
+      if not success then
+         warn("Auto Fish error: " .. err)
+         _G.AutoFishEnabled = false
+         AutoFishToggle:Set(false)
+      end
+   end,
+})
+
 -- Auto-refresh player list
 game.Players.PlayerAdded:Connect(function()
    wait(1)
@@ -220,9 +275,9 @@ end)
 -- Notifikasi Selamat Datang
 Rayfield:Notify({
    Title = "Bee Hub v1.8 Loaded!",
-   Content = "Check backpack jika error.",
+   Content = "Check backpack jika error. Auto Fish tersedia di tab Auto Fish!",
    Duration = 5,
    Image = 4483362458,
 })
 
-print("Bee Hub v1.8 Loaded Successfully!")
+print("Bee Hub v1.8 with Auto Fish Loaded Successfully!")
