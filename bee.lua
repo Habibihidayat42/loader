@@ -17,7 +17,7 @@ end
 
 -- Buat Window Utama
 local Window = Rayfield:CreateWindow({
-   Name = "Bee Hub v1.8 (Fish It - Fleksibel Rod)",
+   Name = "Bee Hub v1.9 (Fish It - Fleksibel Rod)",
    LoadingTitle = "Loading Bee Hub...",
    LoadingSubtitle = "by Bee",
    ConfigurationSaving = {
@@ -33,15 +33,33 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
--- Fungsi Auto-Equip Tool (Fleksibel untuk rod apa saja)
+-- Fungsi Auto-Equip Tool (Cek backpack dan karakter)
 local function equipTool()
     local player = game.Players.LocalPlayer
+    local character = player.Character
     local backpack = player.Backpack
-    local tool = backpack:FindFirstChildOfClass("Tool")
+    local tool = nil
+
+    -- Cek apakah sudah ada tool di karakter
+    if character then
+        tool = character:FindFirstChildOfClass("Tool")
+        if tool and (string.find(string.lower(tool.Name), "rod") or string.find(string.lower(tool.Name), "fish")) then
+            return tool
+        end
+    end
+
+    -- Cek tool di backpack
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and (string.find(string.lower(item.Name), "rod") or string.find(string.lower(item.Name), "fish")) then
+            tool = item
+            break
+        end
+    end
+
     if tool then
         local success, err = pcall(function()
-            tool.Parent = player.Character
-            wait(0.7) -- Delay untuk pastikan equip
+            tool.Parent = character
+            wait(0.7) -- Delay untuk memastikan equip
         end)
         if success then
             return tool
@@ -50,9 +68,9 @@ local function equipTool()
             return nil
         end
     else
-        warn("No tool found in backpack!")
+        warn("No fishing rod found in backpack or character!")
+        return nil
     end
-    return nil
 end
 
 -- Tab 1: Movement
@@ -244,11 +262,11 @@ local AutoFishToggle = AutoFishTab:CreateToggle({
                      -- Delay untuk menghindari spam
                      wait(2)
                   else
-                     warn("Auto Fish stopped: No tool equipped")
+                     warn("Auto Fish stopped: No fishing rod found")
                      _G.AutoFishEnabled = false
                      Rayfield:Notify({
                         Title = "Auto Fish Error",
-                        Content = "No fishing rod found in backpack!",
+                        Content = "No fishing rod found in backpack or character!",
                         Duration = 5,
                         Image = 4483362458,
                      })
@@ -274,10 +292,10 @@ end)
 
 -- Notifikasi Selamat Datang
 Rayfield:Notify({
-   Title = "Bee Hub v1.8 Loaded!",
-   Content = "Check backpack jika error. Auto Fish tersedia di tab Auto Fish!",
+   Title = "Bee Hub v1.9 Loaded!",
+   Content = "Check backpack or character for fishing rod if Auto Fish fails.",
    Duration = 5,
    Image = 4483362458,
 })
 
-print("Bee Hub v1.8 with Auto Fish Loaded Successfully!")
+print("Bee Hub v1.9 with Auto Fish Loaded Successfully!")
