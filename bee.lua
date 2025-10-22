@@ -64,9 +64,12 @@ local function getRodList()
     local backpack = player.Backpack
     local rodList = {}
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and item.Name:lower():find("rod") then
+        if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
             table.insert(rodList, item.Name)
         end
+    end
+    if #rodList == 0 then
+        table.insert(rodList, "No Rod Found")
     end
     return rodList
 end
@@ -347,7 +350,7 @@ local AutoFishToggle = AutoTab:CreateToggle({
             return
          end
          
-         local tool = char:FindFirstChildOfClass("Tool") or equipTool()
+         local tool = char:FindFirstChildOfClass("Tool") or equipTool(SelectedRod)
          if not tool then
             warn("No fishing tool found in character or backpack!")
             _G.AutoFishEnabled = false
@@ -380,7 +383,7 @@ local AutoFishToggle = AutoTab:CreateToggle({
                
                -- Pastikan tool masih ada
                if not char:FindFirstChildOfClass("Tool") then
-                  tool = equipTool()
+                  tool = equipTool(SelectedRod)
                   if not tool then
                      warn("No fishing tool equipped!")
                      _G.AutoFishEnabled = false
@@ -397,7 +400,7 @@ local AutoFishToggle = AutoTab:CreateToggle({
                   -- Blatant: Cari Floral Bait atau fish-related object
                   local foundTarget = false
                   for _, obj in pairs(workspace:GetDescendants()) do
-                     if obj:IsA("Part") and (obj.Name == "Floral Bait" or obj.Name:lower():match("fish")) then
+                     if obj:IsA("Part") and (obj.Name == "Floral Bait" or obj.Name:lower():match("fish") or obj.Name:lower():match("bobber")) then
                         root.CFrame = obj.CFrame + Vector3.new(0, 3, 0) -- Offset agar tidak stuck
                         tool:Activate()
                         wait(0.1)
@@ -427,19 +430,19 @@ local AutoFishToggle = AutoTab:CreateToggle({
                   tool:Activate()
                   local biteDetected = false
                   local startTime = tick()
-                  local maxWait = AutoFishQuality == "Perfect" and 1 or
-                                  AutoFishQuality == "Amazing" and 2 or
-                                  AutoFishQuality == "OK" and 3 or 5
+                  local maxWait = AutoFishQuality == "Perfect" and 1.5 or
+                                  AutoFishQuality == "Amazing" and 2.5 or
+                                  AutoFishQuality == "OK" and 3.5 or 5.0
                   
                   while tick() - startTime < maxWait and _G.AutoFishEnabled do
                      for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Part") and obj.Name == "Floral Bait" then
+                        if obj:IsA("Part") and (obj.Name == "Floral Bait" or obj.Name:lower():match("bobber")) then
                            local velocity = obj.Velocity.Magnitude
-                           if velocity > 0.015 then -- Sensitivitas lebih rendah untuk Fish It
+                           if velocity > 0.01 then -- Sesuaikan sensitivitas
                               biteDetected = true
                               Rayfield:Notify({
                                  Title = "Bite Detected!",
-                                 Content = "Floral Bait moving! Velocity: " .. velocity,
+                                 Content = "Bobber moving! Velocity: " .. velocity,
                                  Duration = 3,
                               })
                               break
@@ -456,7 +459,7 @@ local AutoFishToggle = AutoTab:CreateToggle({
                         end
                      end
                      if biteDetected then break end
-                     wait(0.02) -- Cek lebih cepat untuk responsivitas
+                     wait(0.01) -- Polling lebih cepat
                   end
                   
                   if biteDetected then
