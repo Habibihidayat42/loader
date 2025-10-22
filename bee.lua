@@ -35,10 +35,12 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Fungsi Auto-Equip Tool (Fleksibel untuk rod apa saja)
-local function equipTool()
+local function equipTool(toolName)
     local player = game.Players.LocalPlayer
     local backpack = player.Backpack
-    local tool = backpack:FindFirstChildOfClass("Tool")
+    local character = player.Character
+
+    local tool = character:FindFirstChild(toolName) or backpack:FindFirstChild(toolName)
     if tool then
         local success, err = pcall(function()
             tool.Parent = player.Character
@@ -51,9 +53,22 @@ local function equipTool()
             return nil
         end
     else
-        warn("No tool found in backpack!")
+        warn("No tool found with name: " .. toolName)
     end
     return nil
+end
+
+-- Fungsi untuk dapatkan list rod dari backpack
+local function getRodList()
+    local player = game.Players.LocalPlayer
+    local backpack = player.Backpack
+    local rodList = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name:lower():find("rod") then
+            table.insert(rodList, item.Name)
+        end
+    end
+    return rodList
 end
 
 -- Tab 1: Movement
@@ -219,6 +234,50 @@ end)
 
 -- Tab 4: Auto Features (Hanya Auto Fish)
 local AutoTab = Window:CreateTab("Auto Features", 4483362458)
+
+-- Dropdown untuk pilih rod
+local RodList = getRodList()
+local SelectedRod = RodList[1] or "No Rod Found"
+local RodDropdown = AutoTab:CreateDropdown({
+   Name = "Select Fishing Rod",
+   Options = RodList,
+   CurrentOption = SelectedRod,
+   Flag = "RodDropdown",
+   Callback = function(Option)
+      SelectedRod = Option
+      Rayfield:Notify({
+         Title = "Rod Selected",
+         Content = "Selected: " .. Option,
+         Duration = 3,
+         Image = 4483362458,
+      })
+   end,
+})
+
+-- Tombol Equip Rod
+local EquipButton = AutoTab:CreateButton({
+   Name = "Equip Selected Rod",
+   Callback = function()
+      local success, err = pcall(function()
+         equipTool(SelectedRod)
+         Rayfield:Notify({
+            Title = "Rod Equipped",
+            Content = "Equipped: " .. SelectedRod,
+            Duration = 3,
+            Image = 4483362458,
+         })
+      end)
+      if not success then
+         warn("Equip error: " .. err)
+         Rayfield:Notify({
+            Title = "Equip Error",
+            Content = "Failed to equip " .. SelectedRod,
+            Duration = 5,
+            Image = 4483362458,
+         })
+      end
+   end,
+})
 
 -- Auto Fish Mode Dropdown
 local AutoFishMode = "Legit"
