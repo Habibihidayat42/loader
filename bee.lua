@@ -17,7 +17,7 @@ end
 
 -- Buat Window Utama
 local Window = Rayfield:CreateWindow({
-   Name = "Bee Hub v2.0 (Fish It - Fleksibel Rod)",
+   Name = "Bee Hub v2.1 (Fish It - Fleksibel Rod)",
    LoadingTitle = "Loading Bee Hub...",
    LoadingSubtitle = "by Bee",
    ConfigurationSaving = {
@@ -32,6 +32,46 @@ local Window = Rayfield:CreateWindow({
    },
    KeySystem = false
 })
+
+-- Fungsi Auto-Equip Tool (Cek backpack dan karakter untuk Rod)
+local function equipTool()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local backpack = player.Backpack
+    local tool = nil
+
+    -- Cek apakah sudah ada rod di karakter
+    if character then
+        tool = character:FindFirstChildOfClass("Tool")
+        if tool and string.find(string.lower(tool.Name), "rod") then
+            return tool
+        end
+    end
+
+    -- Cek rod di backpack
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and string.find(string.lower(item.Name), "rod") then
+            tool = item
+            break
+        end
+    end
+
+    if tool then
+        local success, err = pcall(function()
+            tool.Parent = character
+            wait(0.7) -- Delay untuk memastikan equip
+        end)
+        if success then
+            return tool
+        else
+            warn("Failed to equip rod: " .. err)
+            return nil
+        end
+    else
+        warn("No fishing rod found in backpack or character!")
+        return nil
+    end
+end
 
 -- Tab 1: Movement
 local MovementTab = Window:CreateTab("Movement", 4483362458)
@@ -228,30 +268,50 @@ local ReelClicksSlider = AutoFishTab:CreateSlider({
 })
 
 local AutoFishToggle = AutoFishTab:CreateToggle({
-   Name = "Auto Fish (Simulate Input)",
+   Name = "Auto Fish (Auto Equip & Simulate)",
    CurrentValue = false,
    Flag = "AutoFishToggle",
    Callback = function(Value)
       _G.AutoFishEnabled = Value
       local success, err = pcall(function()
          if Value then
-            local VirtualInputManager = game:GetService("VirtualInputManager")
-            local mouse = game.Players.LocalPlayer:GetMouse()
             spawn(function()
                while _G.AutoFishEnabled do
+                  -- Equip rod jika belum
+                  local tool = equipTool()
+                  if not tool then
+                     warn("Auto Fish stopped: No fishing rod found")
+                     _G.AutoFishEnabled = false
+                     Rayfield:Notify({
+                        Title = "Auto Fish Error",
+                        Content = "No fishing rod found! Equip one manually.",
+                        Duration = 5,
+                        Image = 4483362458,
+                     })
+                     AutoFishToggle:Set(false)
+                     break
+                  end
+                  -- Dapatkan VirtualInputManager
+                  local VirtualInputManager = game:GetService("VirtualInputManager")
+                  -- Pindahkan mouse ke tengah layar untuk targeting air (asumsi karakter menghadap air)
+                  local viewport = workspace.CurrentCamera.ViewportSize
+                  local centerX = viewport.X / 2
+                  local centerY = viewport.Y / 2
+                  VirtualInputManager:SendMouseMoveEvent(centerX, centerY, game)
+                  wait(0.1) -- Delay kecil untuk mouse move
                   -- Cast: Hold mouse button
-                  VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0) -- Down
+                  VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0) -- Down
                   wait(_G.CastHoldTime or 0.5)
-                  VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0) -- Up
+                  VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0) -- Up
                   
                   -- Wait for bite
                   wait(_G.BiteWaitTime or 2)
                   
                   -- Reel: Rapid clicks
                   for i = 1, (_G.ReelClicks or 20) do
-                     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
+                     VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
                      wait(0.01)
-                     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
+                     VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
                      wait(0.01)
                   end
                   
@@ -288,10 +348,10 @@ end)
 
 -- Notifikasi Selamat Datang
 Rayfield:Notify({
-   Title = "Bee Hub v2.0 Loaded!",
-   Content = "Auto Fish sekarang menggunakan simulasi input (tanpa tool). Posisikan mouse di air, hadap air, lalu aktifkan toggle. Sesuaikan slider untuk timing terbaik.",
+   Title = "Bee Hub v2.1 Loaded!",
+   Content = "Auto Fish sekarang otomatis equip rod dan pindah mouse ke tengah layar. Posisikan karakter menghadap air, lalu aktifkan toggle. Tidak perlu klik manual lagi!",
    Duration = 10,
    Image = 4483362458,
 })
 
-print("Bee Hub v2.0 with Auto Fish Loaded Successfully!")
+print("Bee Hub v2.1 with Auto Fish Loaded Successfully!")
