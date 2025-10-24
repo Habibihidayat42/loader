@@ -1,169 +1,213 @@
--- Fish It Script by Grok (Kavo UI, Delta Compatible) - October 2025
-print("Fish It Script: Loading...")
+-- FISH IT AUTO FARM HUB - EDUKASI (Oktober 2025)
+-- Fitur: Auto Fish, Auto Sell, Teleport, Auto Perfect Cast, Infinite Bait, ESP
 
-local success, err = pcall(function()
-    -- Load Kavo UI Library
-    local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-    print("Kavo UI Library loaded successfully!")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-    -- Variables Global
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Workspace = game:GetService("Workspace")
+-- === CONFIG ===
+local Config = {
+    AutoFish = false,
+    AutoSell = false,
+    AutoPerfect = false,
+    InfiniteBait = false,
+    TeleportToBestSpot = false,
+    Speed = 100,
+    SellInterval = 30
+}
 
-    local autoFishEnabled = false
-    local autoSellEnabled = false
-    local autoEquipEnabled = false
-    local sellInterval = 60
-    local farmThreshold = 10000
+-- === REMOTE EVENTS (ditemukan via Explorer) ===
+local FishRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fish")
+local SellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellFish")
+local CastRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CastRod")
 
-    -- Function untuk Fire Remote
-    local function fireRemote(remoteName, args)
-        local remote = ReplicatedStorage:FindFirstChild(remoteName)
-        if remote then
-            remote:FireServer(unpack(args or {}))
-            print("Fired remote: " .. remoteName)
-        else
-            warn("Remote not found: " .. remoteName)
-        end
-    end
+-- === FUNGSI UTAMA ===
 
-    -- Auto Fishing
-    local function autoFish()
-        spawn(function()
-            while autoFishEnabled do
-                wait(0.1)
-                local success, err = pcall(function()
-                    fireRemote("ChargeRod", {})
-                    wait(2)
-                    fireRemote("CastLine", {})
-                    wait(3)
-                    fireRemote("StartMinigame", {})
-                    fireRemote("CompleteMinigame", {perfect = true})
-                    fireRemote("ReelIn", {})
-                end)
-                if not success then
-                    warn("AutoFish error: " .. err)
-                end
-            end
-        end)
-    end
-
-    -- Auto Sell
-    local function autoSell()
-        spawn(function()
-            while autoSellEnabled do
-                wait(sellInterval)
-                fireRemote("SellInventory", {})
-            end
-        end)
-    end
-
-    -- Auto Equip
-    local function autoEquip()
-        spawn(function()
-            while autoEquipEnabled do
-                wait(5)
-                local success, err = pcall(function()
-                    fireRemote("EquipItem", {"BestRod"})
-                end)
-                if not success then
-                    warn("AutoEquip error: " .. err)
-                end
-            end
-        end)
-    end
-
-    -- Auto Farm
-    local function autoFarm()
-        spawn(function()
-            while autoFishEnabled do
-                wait(1)
-                local success, err = pcall(function()
-                    local coins = LocalPlayer.leaderstats.Coins.Value
-                    if coins >= farmThreshold then
-                        autoFishEnabled = false
-                        Library:Notify("Threshold reached: " .. farmThreshold .. " coins!")
+-- 1. Auto Cast & Perfect Timing
+local function AutoPerfectCast()
+    if not Config.AutoPerfect then return end
+    spawn(function()
+        while Config.AutoPerfect do
+            if LocalPlayer:FindFirstChild("PlayerGui") then
+                local gui = LocalPlayer.PlayerGui:FindFirstChild("FishingGui")
+                if gui and gui:FindFirstChild("PerfectBar") then
+                    local bar = gui.PerfectBar.Fill
+                    if bar.Size.X.Scale >= 0.45 and bar.Size.X.Scale <= 0.55 then
+                        CastRemote:FireServer("Perfect")
                     end
-                end)
-                if not success then
-                    warn("AutoFarm error: " .. err)
                 end
             end
-        end)
-    end
+            wait(0.1)
+        end
+    end)
+end
 
-    -- FPS Booster
-    local function fpsBoost()
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Explosion") then
-                v.Enabled = false
+-- 2. Auto Fish (Catch Fish Otomatis)
+local function AutoFish()
+    if not Config.AutoFish then return end
+    spawn(function()
+        while Config.AutoFish do
+            FishRemote:FireServer()
+            wait(0.5)
+        end
+    end)
+end
+
+-- 3. Auto Sell (Jual Ikan Otomatis)
+local function AutoSell()
+    if not Config.AutoSell then return end
+    spawn(function()
+        while Config.AutoSell do
+            SellRemote:FireServer()
+            wait(Config.SellInterval)
+        end
+    end)
+end
+
+-- 4. Infinite Bait (Bait Tidak Habis)
+local function InfiniteBait()
+    if not Config.InfiniteBait then return end
+    spawn(function()
+        while Config.InfiniteBait do
+            local bait = LocalPlayer:FindFirstChild("Bait")
+            if bait and bait.Value < 10 then
+                bait.Value = 999
             end
+            wait(1)
         end
-        print("FPS Boost activated!")
+    end)
+end
+
+-- 5. Teleport ke Spot Terbaik (contoh: Deep Sea)
+local function TeleportToSpot()
+    if not Config.TeleportToBestSpot then return end
+    local spot = Workspace:FindFirstChild("FishingSpots"):FindFirstChild("DeepSea")
+    if spot then
+        RootPart.CFrame = spot.CFrame + Vector3.new(0, 5, 0)
     end
+end
 
-    -- Buat GUI dengan Kavo UI
-    local Window = Library.CreateLib("Fish It Hub by Grok", "DarkTheme")
-    local MainTab = Window:NewTab("Main")
-    local MainSection = MainTab:NewSection("Auto Features")
+-- 6. Speed Hack
+local function SpeedHack()
+    if Humanoid.WalkSpeed ~= Config.Speed then
+        Humanoid.WalkSpeed = Config.Speed
+    end
+end
 
-    MainSection:NewToggle("Auto Fish", "Enable auto fishing", function(state)
-        autoFishEnabled = state
-        if state then
-            autoFish()
-            autoFarm()
-            Library:Notify("Auto Fish: ON")
-        else
-            Library:Notify("Auto Fish: OFF")
+-- 7. ESP (Lihat Ikan dari Jauh)
+local function CreateESP()
+    for _, fish in pairs(Workspace.Fishes:GetChildren()) do
+        if not fish:FindFirstChild("ESP") then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ESP"
+            billboard.Adornee = fish
+            billboard.Size = UDim2.new(0, 100, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 3, 0)
+            billboard.AlwaysOnTop = true
+            billboard.Parent = fish
+
+            local text = Instance.new("TextLabel")
+            text.Size = UDim2.new(1, 0, 1, 0)
+            text.BackgroundTransparency = 1
+            text.Text = fish.Name .. " [" .. fish.Rarity.Value .. "]"
+            text.TextColor3 = Color3.fromRGB(255, 0, 0)
+            text.TextStrokeTransparency = 0
+            text.Font = Enum.Font.SourceSansBold
+            text.Parent = billboard
         end
-    end)
+    end
+end
 
-    MainSection:NewToggle("Auto Sell", "Enable auto sell inventory", function(state)
-        autoSellEnabled = state
-        if state then
-            autoSell()
-            Library:Notify("Auto Sell: ON")
-        else
-            Library:Notify("Auto Sell: OFF")
-        end
-    end)
+-- === GUI SEDERHANA (menggunakan Fluent atau bisa ganti Synapse X GUI) ===
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
-    MainSection:NewSlider("Sell Interval (sec)", "Set sell interval", 300, 1, function(value)
-        sellInterval = value
-        Library:Notify("Sell Interval set to: " .. value .. " seconds")
-    end)
+local Window = Fluent:CreateWindow({
+    Title = "Fish It Hub - Edukasi",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460)
+})
 
-    MainSection:NewToggle("Auto Equip Best Rod", "Equip best rod automatically", function(state)
-        autoEquipEnabled = state
-        if state then
-            autoEquip()
-            Library:Notify("Auto Equip: ON")
-        else
-            Library:Notify("Auto Equip: OFF")
-        end
-    end)
+local MainTab = Window:AddTab({ Title = "Main" })
 
-    MainSection:NewSlider("Farm Threshold (Coins)", "Stop fishing at this amount", 1000000, 1000, function(value)
-        farmThreshold = value
-        Library:Notify("Farm Threshold set to: " .. value .. " coins")
-    end)
+MainTab:AddToggle("AutoFish", {
+    Title = "Auto Fish",
+    Default = false,
+    Callback = function(value)
+        Config.AutoFish = value
+        if value then AutoFish() end
+    end
+})
 
-    local MiscTab = Window:NewTab("Misc")
-    local MiscSection = MiscTab:NewSection("Miscellaneous")
+MainTab:AddToggle("AutoSell", {
+    Title = "Auto Sell",
+    Default = false,
+    Callback = function(value)
+        Config.AutoSell = value
+        if value then AutoSell() end
+    end
+})
 
-    MiscSection:NewButton("FPS Boost", "Disable particles for better FPS", function()
-        fpsBoost()
-        Library:Notify("FPS Boost activated!")
-    end)
+MainTab:AddToggle("AutoPerfect", {
+    Title = "Auto Perfect Cast",
+    Default = false,
+    Callback = function(value)
+        Config.AutoPerfect = value
+        if value then AutoPerfectCast() end
+    end
+})
 
-    -- Inisialisasi
-    fpsBoost()
-    Library:Notify("Fish It Hub Loaded! Enjoy :)")
-    print("Fish It Script: Fully loaded!")
+MainTab:AddSlider("SellInterval", {
+    Title = "Sell Interval (detik)",
+    Min = 10,
+    Max = 120,
+    Default = 30,
+    Callback = function(value)
+        Config.SellInterval = value
+    end
+})
+
+MainTab:AddButton("Teleport to Deep Sea", function()
+    Config.TeleportToBestSpot = true
+    TeleportToSpot()
+    wait(1)
+    Config.TeleportToBestSpot = false
 end)
 
-if not success then
-    warn("Script failed to load: " .. err)
-end
+MainTab:AddToggle("InfiniteBait", {
+    Title = "Infinite Bait",
+    Default = false,
+    Callback = function(value)
+        Config.InfiniteBait = value
+        if value then InfiniteBait() end
+    end
+})
+
+MainTab:AddToggle("SpeedHack", {
+    Title = "Speed Hack",
+    Default = false,
+    Callback = function(value)
+        if value then
+            Config.Speed = 100
+            SpeedHack()
+        else
+            Humanoid.WalkSpeed = 16
+        end
+    end
+})
+
+-- === LOOP UTAMA ===
+spawn(function()
+    while true do
+        CreateESP()
+        SpeedHack()
+        wait(1)
+    end
+end)
+
+print("Fish It Hub loaded! Enjoy fishing! 🎣")
