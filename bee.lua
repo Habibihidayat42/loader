@@ -1,106 +1,74 @@
--- Fish It Hub v1.9 by Grok (Synapse UI Mobile-Optimized for Delta Android)
+-- Fish It Hub v2.0 by Grok (Custom GUI Mobile-Optimized for Delta Android)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Load Synapse UI Library
-local success, SynapseUI = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/SynapseTeam/SynapseUI/main/SynapseUI.lua"))()
-end)
-
-if not success then
-    StarterGui:SetCore("SendNotification", {
-        Title = "Fish It Hub Error",
-        Text = "Synapse UI gagal load. Pakai tap 2x: Auto Farm, 3x: Auto Sell.",
-        Duration = 10
-    })
-    print("[FishItHub] Synapse UI failed to load: " .. tostring(SynapseUI))
+-- Function to Create GUI
+local function CreateGUI()
+    if LocalPlayer.PlayerGui:FindFirstChild("FishItHub") then
+        LocalPlayer.PlayerGui.FishItHub:Destroy()
+        print("[FishItHub] Destroying old GUI")
+    end
     
-    -- Fallback Keybinds (Tap 2x/3x)
-    local tapCount = 0
-    local lastTap = 0
-    UserInputService.TouchTap:Connect(function()
-        local currentTime = tick()
-        if currentTime - lastTap < 0.5 then
-            tapCount = tapCount + 1
-        else
-            tapCount = 1
-        end
-        lastTap = currentTime
-        
-        if tapCount == 2 then
-            getgenv().AutoFarmEnabled = not getgenv().AutoFarmEnabled
-            StarterGui:SetCore("SendNotification", {
-                Title = "Fish It Hub",
-                Text = "Auto Farm: " .. (getgenv().AutoFarmEnabled and "ON" or "OFF"),
-                Duration = 3
-            })
-            print("[FishItHub] Auto Farm: " .. (getgenv().AutoFarmEnabled and "ON" or "OFF"))
-            if getgenv().AutoFarmEnabled then
-                spawn(function()
-                    while getgenv().AutoFarmEnabled do
-                        local char = LocalPlayer.Character
-                        if char then
-                            local tool = char:FindFirstChildOfClass("Tool")
-                            if tool and tool.Name:find("Rod") then
-                                tool:Activate()
-                                wait(2)
-                                local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
-                                if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
-                                    tool:Activate()
-                                    wait(0.5)
-                                end
-                            end
-                        end
-                        wait(1)
-                    end
-                end)
-            end
-        elseif tapCount == 3 then
-            getgenv().AutoSellEnabled = not getgenv().AutoSellEnabled
-            StarterGui:SetCore("SendNotification", {
-                Title = "Fish It Hub",
-                Text = "Auto Sell: " .. (getgenv().AutoSellEnabled and "ON" or "OFF"),
-                Duration = 3
-            })
-            print("[FishItHub] Auto Sell: " .. (getgenv().AutoSellEnabled and "ON" or "OFF"))
-            if getgenv().AutoSellEnabled then
-                spawn(function()
-                    while getgenv().AutoSellEnabled do
-                        pcall(function()
-                            game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer()
-                        end)
-                        wait(5)
-                    end
-                end)
-            end
-        end
-    end)
-    return
-end
-
--- Create Synapse UI Window
-local Window = SynapseUI:CreateWindow({
-    Title = "Fish It Hub v1.9",
-    Size = UDim2.new(0, 200, 0, 350),
-    Position = UDim2.new(0.7, 0, 0.1, 0),
-    Draggable = true, -- Synapse UI built-in draggable
-})
-
--- Main Tab
-local MainTab = Window:CreateTab("Fishing")
-
--- Minimize Button
-local isMinimized = false
-MainTab:CreateButton({
-    Text = "Minimize/Maximize",
-    Callback = function()
-        isMinimized = not isMinimized
-        local frame = Window:GetFrame()
-        if frame then
-            frame.Size = isMinimized and UDim2.new(0, 200, 0, 50) or UDim2.new(0, 200, 0, 350)
-            frame:FindFirstChild("Content").Visible = not isMinimized
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "FishItHub"
+    ScreenGui.Parent = LocalPlayer.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Enabled = true
+    
+    -- Main Frame (Mobile-Friendly)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 200, 0, 400)
+    Frame.Position = UDim2.new(0.7, 0, 0.1, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Frame.BorderSizePixel = 0
+    Frame.Visible = true
+    Frame.Parent = ScreenGui
+    
+    -- Title
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -60, 0, 50)
+    Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Title.Text = "Fish It Hub v2.0"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 16
+    Title.Font = Enum.Font.SourceSansBold
+    Title.Parent = Frame
+    
+    -- Minimize Button (Large for Touch)
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Size = UDim2.new(0, 60, 0, 60)
+    MinimizeButton.Position = UDim2.new(1, -60, 0, 0)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    MinimizeButton.Text = "-"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 28
+    MinimizeButton.Font = Enum.Font.SourceSansBold
+    MinimizeButton.Parent = Frame
+    
+    -- ScrollFrame for Features
+    local ScrollFrame = Instance.new("ScrollingFrame")
+    ScrollFrame.Size = UDim2.new(1, 0, 1, -50)
+    ScrollFrame.Position = UDim2.new(0, 0, 0, 50)
+    ScrollFrame.BackgroundTransparency = 1
+    ScrollFrame.ScrollBarThickness = 8
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ScrollFrame.Parent = Frame
+    
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 10)
+    UIListLayout.Parent = ScrollFrame
+    
+    -- Minimize Logic
+    local isMinimized = false
+    MinimizeButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isMinimized = not isMinimized
+            MinimizeButton.Text = isMinimized and "+" or "-"
+            Frame.Size = isMinimized and UDim2.new(0, 200, 0, 60) or UDim2.new(0, 200, 0, 400)
+            ScrollFrame.Visible = not isMinimized
             print("[FishItHub] GUI " .. (isMinimized and "Minimized" or "Maximized"))
             StarterGui:SetCore("SendNotification", {
                 Title = "Fish It Hub",
@@ -108,16 +76,129 @@ MainTab:CreateButton({
                 Duration = 3
             })
         end
+    end)
+    
+    -- Drag Logic (Touch-Optimized)
+    local dragging, dragStart, startPos
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            print("[FishItHub] Drag Started")
+        end
+    end)
+    Frame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    Frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            print("[FishItHub] Drag Ended")
+        end
+    end)
+    
+    -- Function to create Toggle Button
+    local function CreateToggle(name, callback)
+        local ToggleButton = Instance.new("TextButton")
+        ToggleButton.Size = UDim2.new(1, -10, 0, 45)
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        ToggleButton.Text = name .. ": OFF"
+        ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleButton.TextSize = 14
+        ToggleButton.Font = Enum.Font.SourceSans
+        ToggleButton.Parent = ScrollFrame
+        local state = false
+        ToggleButton.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                state = not state
+                ToggleButton.Text = name .. (state and ": ON" or ": OFF")
+                ToggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+                callback(state)
+                print("[FishItHub] " .. name .. ": " .. (state and "ON" or "OFF"))
+            end
+        end)
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
     end
-})
-
--- Auto Farm Toggle
-MainTab:CreateToggle({
-    Text = "Auto Farm (Cast & Reel)",
-    Default = false,
-    Callback = function(state)
+    
+    -- Function to create Button
+    local function CreateButton(name, callback)
+        local Button = Instance.new("TextButton")
+        Button.Size = UDim2.new(1, -10, 0, 45)
+        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        Button.Text = name
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.TextSize = 14
+        Button.Font = Enum.Font.SourceSans
+        Button.Parent = ScrollFrame
+        Button.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                callback()
+                print("[FishItHub] " .. name .. " Clicked")
+            end
+        end)
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+    end
+    
+    -- Function to create Slider
+    local function CreateSlider(name, min, max, callback)
+        local SliderFrame = Instance.new("Frame")
+        SliderFrame.Size = UDim2.new(1, -10, 0, 65)
+        SliderFrame.BackgroundTransparency = 1
+        SliderFrame.Parent = ScrollFrame
+    
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(1, 0, 0, 25)
+        Label.BackgroundTransparency = 1
+        Label.Text = name .. ": " .. min
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Label.TextSize = 14
+        Label.Font = Enum.Font.SourceSans
+        Label.Parent = SliderFrame
+    
+        local Slider = Instance.new("TextButton")
+        Slider.Size = UDim2.new(1, -10, 0, 25)
+        Slider.Position = UDim2.new(0, 5, 0, 30)
+        Slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        Slider.Text = ""
+        Slider.Parent = SliderFrame
+    
+        local Fill = Instance.new("Frame")
+        Fill.Size = UDim2.new(0, 0, 1, 0)
+        Fill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        Fill.Parent = Slider
+    
+        local dragging = false
+        Slider.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+            end
+        end)
+        Slider.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+                local relativeX = (input.Position.X - Slider.AbsolutePosition.X) / Slider.AbsoluteSize.X
+                relativeX = math.clamp(relativeX, 0, 1)
+                local value = math.floor(min + (max - min) * relativeX)
+                Fill.Size = UDim2.new(relativeX, 0, 1, 0)
+                Label.Text = name .. ": " .. value
+                callback(value)
+                print("[FishItHub] " .. name .. ": " .. value)
+            end
+        end)
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+    end
+    
+    -- Create Toggles/Buttons/Sliders
+    CreateToggle("Auto Farm", function(state)
         getgenv().AutoFarmEnabled = state
-        print("[FishItHub] Auto Farm: " .. (state and "ON" or "OFF"))
         if state then
             spawn(function()
                 while getgenv().AutoFarmEnabled do
@@ -138,16 +219,10 @@ MainTab:CreateToggle({
                 end
             end)
         end
-    end
-})
-
--- Auto Sell Toggle
-MainTab:CreateToggle({
-    Text = "Auto Sell Fish",
-    Default = false,
-    Callback = function(state)
+    end)
+    
+    CreateToggle("Auto Sell", function(state)
         getgenv().AutoSellEnabled = state
-        print("[FishItHub] Auto Sell: " .. (state and "ON" or "OFF"))
         if state then
             spawn(function()
                 while getgenv().AutoSellEnabled do
@@ -158,31 +233,17 @@ MainTab:CreateToggle({
                 end
             end)
         end
-    end
-})
-
--- Walk Speed Slider
-MainTab:CreateSlider({
-    Text = "Walk Speed",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Callback = function(value)
+    end)
+    
+    CreateSlider("Walk Speed", 16, 100, function(value)
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
             char.Humanoid.WalkSpeed = value
-            print("[FishItHub] Walk Speed: " .. value)
         end
-    end
-})
-
--- Infinite Jump Toggle
-MainTab:CreateToggle({
-    Text = "Infinite Jump",
-    Default = false,
-    Callback = function(state)
+    end)
+    
+    CreateToggle("Infinite Jump", function(state)
         getgenv().InfJumpEnabled = state
-        print("[FishItHub] Infinite Jump: " .. (state and "ON" or "OFF"))
         UserInputService.JumpRequest:Connect(function()
             if getgenv().InfJumpEnabled then
                 local char = LocalPlayer.Character
@@ -191,28 +252,17 @@ MainTab:CreateToggle({
                 end
             end
         end)
-    end
-})
-
--- Teleport Button
-MainTab:CreateButton({
-    Text = "Teleport to Spawn",
-    Callback = function()
+    end)
+    
+    CreateButton("Teleport to Spawn", function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
-            print("[FishItHub] Teleport to Spawn")
         end
-    end
-})
-
--- Anti-AFK Toggle
-MainTab:CreateToggle({
-    Text = "Anti-AFK",
-    Default = false,
-    Callback = function(state)
+    end)
+    
+    CreateToggle("Anti-AFK", function(state)
         getgenv().AntiAFKEnabled = state
-        print("[FishItHub] Anti-AFK: " .. (state and "ON" or "OFF"))
         if state then
             spawn(function()
                 while getgenv().AntiAFKEnabled do
@@ -224,149 +274,121 @@ MainTab:CreateToggle({
                 end
             end)
         end
-    end
-})
+    end)
+    
+    CreateToggle("Auto Upgrade", function(state)
+        getgenv().AutoUpgradeEnabled = state
+        if state then
+            spawn(function()
+                while getgenv().AutoUpgradeEnabled do
+                    pcall(function()
+                        local remotes = game:GetService("ReplicatedStorage").Remotes
+                        if remotes:FindFirstChild("UpgradeRod") then
+                            remotes.UpgradeRod:FireServer()
+                        end
+                        if remotes:FindFirstChild("UpgradeReel") then
+                            remotes.UpgradeReel:FireServer()
+                        end
+                    end)
+                    wait(10)
+                end
+            end)
+        end
+    end)
+    
+    CreateToggle("ESP (Fish/Bobber)", function(state)
+        getgenv().ESPEnabled = state
+        if state then
+            spawn(function()
+                while getgenv().ESPEnabled do
+                    pcall(function()
+                        for _, v in pairs(Workspace:GetDescendants()) do
+                            if v.Name == "Bobber" or (v:FindFirstChild("Fish") and v.Fish.Value) then
+                                local highlight = v:FindFirstChild("Highlight")
+                                if not highlight then
+                                    highlight = Instance.new("Highlight")
+                                    highlight.Name = "Highlight"
+                                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                                    highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+                                    highlight.Parent = v
+                                end
+                            end
+                        end
+                    end)
+                    wait(1)
+                end
+                -- Cleanup highlights when disabled
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v:FindFirstChild("Highlight") then
+                        v.Highlight:Destroy()
+                    end
+                end
+            end)
+        end
+    end)
+    
+    CreateToggle("Auto Fish Rarity", function(state)
+        getgenv().AutoRarityEnabled = state
+        if state then
+            spawn(function()
+                while getgenv().AutoRarityEnabled do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local tool = char:FindFirstChildOfClass("Tool")
+                            if tool and tool.Name:find("Rod") then
+                                local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
+                                if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
+                                    local fish = bobber.Fish.Value
+                                    if fish:FindFirstChild("Rarity") and fish.Rarity.Value == "Rare" or fish.Rarity.Value == "Legendary" then
+                                        tool:Activate()
+                                        wait(0.5)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    wait(1)
+                end
+            end)
+        end
+    end)
+    
+    -- Info Label
+    local InfoLabel = Instance.new("TextLabel")
+    InfoLabel.Size = UDim2.new(1, -10, 0, 80)
+    InfoLabel.BackgroundTransparency = 1
+    InfoLabel.Text = "Script by Grok\nTap 2x: Auto Farm\n3x: Auto Sell\n4x: Auto Upgrade\nRight Shift: Toggle\nTap -/+: Minimize\nTap & Drag: Geser"
+    InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoLabel.TextSize = 12
+    InfoLabel.Font = Enum.Font.SourceSans
+    InfoLabel.TextWrapped = true
+    InfoLabel.Parent = ScrollFrame
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+    
+    print("[FishItHub] GUI Created Successfully")
+    return ScreenGui
+end
 
--- Info Label
-MainTab:CreateLabel({
-    Text = "Script by Grok\nTap 2x: Auto Farm, 3x: Auto Sell\nRight Shift: Toggle GUI\nCek Delta Logs jika error"
-})
+-- Initial Create
+local CurrentGUI = CreateGUI()
 
 -- Recreate on Character Added (Respawn Fix)
 LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
     print("[FishItHub] Recreating GUI on Respawn")
-    Window = SynapseUI:CreateWindow({
-        Title = "Fish It Hub v1.9",
-        Size = UDim2.new(0, 200, 0, 350),
-        Position = UDim2.new(0.7, 0, 0.1, 0),
-        Draggable = true
-    })
-    MainTab = Window:CreateTab("Fishing")
-    MainTab:CreateButton({
-        Text = "Minimize/Maximize",
-        Callback = function()
-            isMinimized = not isMinimized
-            local frame = Window:GetFrame()
-            if frame then
-                frame.Size = isMinimized and UDim2.new(0, 200, 0, 50) or UDim2.new(0, 200, 0, 350)
-                frame:FindFirstChild("Content").Visible = not isMinimized
-                print("[FishItHub] GUI " .. (isMinimized and "Minimized" or "Maximized"))
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Fish It Hub",
-                    Text = "GUI " .. (isMinimized and "Minimized" or "Maximized"),
-                    Duration = 3
-                })
-            end
+    CurrentGUI = CreateGUI()
+end)
+
+-- Visibility Check Loop (Anti-Disappear)
+spawn(function()
+    while true do
+        if not LocalPlayer.PlayerGui:FindFirstChild("FishItHub") then
+            print("[FishItHub] GUI Missing - Recreating")
+            CurrentGUI = CreateGUI()
         end
-    })
-    MainTab:CreateToggle({
-        Text = "Auto Farm (Cast & Reel)",
-        Default = false,
-        Callback = function(state)
-            getgenv().AutoFarmEnabled = state
-            print("[FishItHub] Auto Farm: " .. (state and "ON" or "OFF"))
-            if state then
-                spawn(function()
-                    while getgenv().AutoFarmEnabled do
-                        local char = LocalPlayer.Character
-                        if char then
-                            local tool = char:FindFirstChildOfClass("Tool")
-                            if tool and tool.Name:find("Rod") then
-                                tool:Activate()
-                                wait(2)
-                                local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
-                                if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
-                                    tool:Activate()
-                                    wait(0.5)
-                                end
-                            end
-                        end
-                        wait(1)
-                    end
-                end)
-            end
-        end
-    })
-    MainTab:CreateToggle({
-        Text = "Auto Sell Fish",
-        Default = false,
-        Callback = function(state)
-            getgenv().AutoSellEnabled = state
-            print("[FishItHub] Auto Sell: " .. (state and "ON" or "OFF"))
-            if state then
-                spawn(function()
-                    while getgenv().AutoSellEnabled do
-                        pcall(function()
-                            game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer()
-                        end)
-                        wait(5)
-                    end
-                end)
-            end
-        end
-    })
-    MainTab:CreateSlider({
-        Text = "Walk Speed",
-        Min = 16,
-        Max = 100,
-        Default = 16,
-        Callback = function(value)
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = value
-                print("[FishItHub] Walk Speed: " .. value)
-            end
-        end
-    })
-    MainTab:CreateToggle({
-        Text = "Infinite Jump",
-        Default = false,
-        Callback = function(state)
-            getgenv().InfJumpEnabled = state
-            print("[FishItHub] Infinite Jump: " .. (state and "ON" or "OFF"))
-            UserInputService.JumpRequest:Connect(function()
-                if getgenv().InfJumpEnabled then
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("Humanoid") then
-                        char.Humanoid:ChangeState("Jumping")
-                    end
-                end
-            end)
-        end
-    })
-    MainTab:CreateButton({
-        Text = "Teleport to Spawn",
-        Callback = function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
-                print("[FishItHub] Teleport to Spawn")
-            end
-        end
-    })
-    MainTab:CreateToggle({
-        Text = "Anti-AFK",
-        Default = false,
-        Callback = function(state)
-            getgenv().AntiAFKEnabled = state
-            print("[FishItHub] Anti-AFK: " .. (state and "ON" or "OFF"))
-            if state then
-                spawn(function()
-                    while getgenv().AntiAFKEnabled do
-                        local char = LocalPlayer.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                            char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -0.1)
-                            wait(60)
-                        end
-                    end
-                end)
-            end
-        end
-    })
-    MainTab:CreateLabel({
-        Text = "Script by Grok\nTap 2x: Auto Farm, 3x: Auto Sell\nRight Shift: Toggle GUI\nCek Delta Logs jika error"
-    })
+        wait(5)
+    end
 end)
 
 -- Toggle GUI Visibility
@@ -374,9 +396,8 @@ local guiVisible = true
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.RightShift then
         guiVisible = not guiVisible
-        local frame = Window and Window:GetFrame()
-        if frame then
-            frame.Visible = guiVisible
+        if CurrentGUI and CurrentGUI:FindFirstChild("Frame") then
+            CurrentGUI.Frame.Visible = guiVisible
             print("[FishItHub] GUI Visibility: " .. (guiVisible and "Shown" or "Hidden"))
             StarterGui:SetCore("SendNotification", {
                 Title = "Fish It Hub",
@@ -387,150 +408,94 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- Visibility Check Loop (Anti-Disappear)
-spawn(function()
-    while true do
-        if not LocalPlayer.PlayerGui:FindFirstChild("SynapseUI") then
-            print("[FishItHub] GUI Missing - Recreating")
-            Window = SynapseUI:CreateWindow({
-                Title = "Fish It Hub v1.9",
-                Size = UDim2.new(0, 200, 0, 350),
-                Position = UDim2.new(0.7, 0, 0.1, 0),
-                Draggable = true
-            })
-            MainTab = Window:CreateTab("Fishing")
-            MainTab:CreateButton({
-                Text = "Minimize/Maximize",
-                Callback = function()
-                    isMinimized = not isMinimized
-                    local frame = Window:GetFrame()
-                    if frame then
-                        frame.Size = isMinimized and UDim2.new(0, 200, 0, 50) or UDim2.new(0, 200, 0, 350)
-                        frame:FindFirstChild("Content").Visible = not isMinimized
-                        print("[FishItHub] GUI " .. (isMinimized and "Minimized" or "Maximized"))
-                        StarterGui:SetCore("SendNotification", {
-                            Title = "Fish It Hub",
-                            Text = "GUI " .. (isMinimized and "Minimized" or "Maximized"),
-                            Duration = 3
-                        })
-                    end
-                end
-            })
-            MainTab:CreateToggle({
-                Text = "Auto Farm (Cast & Reel)",
-                Default = false,
-                Callback = function(state)
-                    getgenv().AutoFarmEnabled = state
-                    print("[FishItHub] Auto Farm: " .. (state and "ON" or "OFF"))
-                    if state then
-                        spawn(function()
-                            while getgenv().AutoFarmEnabled do
-                                local char = LocalPlayer.Character
-                                if char then
-                                    local tool = char:FindFirstChildOfClass("Tool")
-                                    if tool and tool.Name:find("Rod") then
-                                        tool:Activate()
-                                        wait(2)
-                                        local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
-                                        if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
-                                            tool:Activate()
-                                            wait(0.5)
-                                        end
-                                    end
-                                end
-                                wait(1)
-                            end
-                        end)
-                    end
-                end
-            })
-            MainTab:CreateToggle({
-                Text = "Auto Sell Fish",
-                Default = false,
-                Callback = function(state)
-                    getgenv().AutoSellEnabled = state
-                    print("[FishItHub] Auto Sell: " .. (state and "ON" or "OFF"))
-                    if state then
-                        spawn(function()
-                            while getgenv().AutoSellEnabled do
-                                pcall(function()
-                                    game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer()
-                                end)
-                                wait(5)
-                            end
-                        end)
-                    end
-                end
-            })
-            MainTab:CreateSlider({
-                Text = "Walk Speed",
-                Min = 16,
-                Max = 100,
-                Default = 16,
-                Callback = function(value)
+-- Fallback Keybinds (Tap 2x/3x/4x)
+local tapCount = 0
+local lastTap = 0
+UserInputService.TouchTap:Connect(function()
+    local currentTime = tick()
+    if currentTime - lastTap < 0.5 then
+        tapCount = tapCount + 1
+    else
+        tapCount = 1
+    end
+    lastTap = currentTime
+    
+    if tapCount == 2 then
+        getgenv().AutoFarmEnabled = not getgenv().AutoFarmEnabled
+        StarterGui:SetCore("SendNotification", {
+            Title = "Fish It Hub",
+            Text = "Auto Farm: " .. (getgenv().AutoFarmEnabled and "ON" or "OFF"),
+            Duration = 3
+        })
+        print("[FishItHub] Auto Farm: " .. (getgenv().AutoFarmEnabled and "ON" or "OFF"))
+        if getgenv().AutoFarmEnabled then
+            spawn(function()
+                while getgenv().AutoFarmEnabled do
                     local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("Humanoid") then
-                        char.Humanoid.WalkSpeed = value
-                        print("[FishItHub] Walk Speed: " .. value)
-                    end
-                end
-            })
-            MainTab:CreateToggle({
-                Text = "Infinite Jump",
-                Default = false,
-                Callback = function(state)
-                    getgenv().InfJumpEnabled = state
-                    print("[FishItHub] Infinite Jump: " .. (state and "ON" or "OFF"))
-                    UserInputService.JumpRequest:Connect(function()
-                        if getgenv().InfJumpEnabled then
-                            local char = LocalPlayer.Character
-                            if char and char:FindFirstChild("Humanoid") then
-                                char.Humanoid:ChangeState("Jumping")
+                    if char then
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if tool and tool.Name:find("Rod") then
+                            tool:Activate()
+                            wait(2)
+                            local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
+                            if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
+                                tool:Activate()
+                                wait(0.5)
                             end
                         end
-                    end)
-                end
-            })
-            MainTab:CreateButton({
-                Text = "Teleport to Spawn",
-                Callback = function()
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
-                        print("[FishItHub] Teleport to Spawn")
                     end
+                    wait(1)
                 end
-            })
-            MainTab:CreateToggle({
-                Text = "Anti-AFK",
-                Default = false,
-                Callback = function(state)
-                    getgenv().AntiAFKEnabled = state
-                    print("[FishItHub] Anti-AFK: " .. (state and "ON" or "OFF"))
-                    if state then
-                        spawn(function()
-                            while getgenv().AntiAFKEnabled do
-                                local char = LocalPlayer.Character
-                                if char and char:FindFirstChild("HumanoidRootPart") then
-                                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -0.1)
-                                    wait(60)
-                                end
-                            end
-                        end)
-                    end
-                end
-            })
-            MainTab:CreateLabel({
-                Text = "Script by Grok\nTap 2x: Auto Farm, 3x: Auto Sell\nRight Shift: Toggle GUI\nCek Delta Logs jika error"
-            })
+            end)
         end
-        wait(5)
+    elseif tapCount == 3 then
+        getgenv().AutoSellEnabled = not getgenv().AutoSellEnabled
+        StarterGui:SetCore("SendNotification", {
+            Title = "Fish It Hub",
+            Text = "Auto Sell: " .. (getgenv().AutoSellEnabled and "ON" or "OFF"),
+            Duration = 3
+        })
+        print("[FishItHub] Auto Sell: " .. (getgenv().AutoSellEnabled and "ON" or "OFF"))
+        if getgenv().AutoSellEnabled then
+            spawn(function()
+                while getgenv().AutoSellEnabled do
+                    pcall(function()
+                        game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer()
+                    end)
+                    wait(5)
+                end
+            end)
+        end
+    elseif tapCount == 4 then
+        getgenv().AutoUpgradeEnabled = not getgenv().AutoUpgradeEnabled
+        StarterGui:SetCore("SendNotification", {
+            Title = "Fish It Hub",
+            Text = "Auto Upgrade: " .. (getgenv().AutoUpgradeEnabled and "ON" or "OFF"),
+            Duration = 3
+        })
+        print("[FishItHub] Auto Upgrade: " .. (getgenv().AutoUpgradeEnabled and "ON" or "OFF"))
+        if getgenv().AutoUpgradeEnabled then
+            spawn(function()
+                while getgenv().AutoUpgradeEnabled do
+                    pcall(function()
+                        local remotes = game:GetService("ReplicatedStorage").Remotes
+                        if remotes:FindFirstChild("UpgradeRod") then
+                            remotes.UpgradeRod:FireServer()
+                        end
+                        if remotes:FindFirstChild("UpgradeReel") then
+                            remotes.UpgradeReel:FireServer()
+                        end
+                    end)
+                    wait(10)
+                end
+            end)
+        end
     end
 end)
 
 -- Notification
 StarterGui:SetCore("SendNotification", {
-    Title = "Fish It Hub v1.9 Loaded!",
-    Text = "Synapse UI aktif. Tap Minimize/Maximize, Tap & Drag, Tap 2x: Auto Farm, 3x: Auto Sell. Cek Delta Logs.",
+    Title = "Fish It Hub v2.0 Loaded!",
+    Text = "GUI aktif. Tap -/+: Minimize, Tap & Drag: Geser, Tap 2x: Auto Farm, 3x: Auto Sell, 4x: Auto Upgrade. Cek Delta Logs.",
     Duration = 10
 })
