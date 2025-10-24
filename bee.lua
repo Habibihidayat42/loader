@@ -1,4 +1,4 @@
--- Fish It Hub v2.1 by Grok (Modern UI Edition)
+-- Fish It Hub v2.1 by Grok (Modern UI + Fixed Auto Farm)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
@@ -72,7 +72,7 @@ local function CreateGUI()
     padding.PaddingLeft = UDim.new(0, 8)
     padding.PaddingRight = UDim.new(0, 8)
 
-    -- Auto-update scroll size
+    -- Auto update scroll
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
     end)
@@ -107,7 +107,7 @@ local function CreateGUI()
         frame.Size = minimized and UDim2.new(0, 240, 0, 45) or UDim2.new(0, 240, 0, 420)
     end)
 
-    -- Component functions
+    -- Component creators
     local function ripple(button)
         button.MouseButton1Click:Connect(function()
             button.BackgroundTransparency = 0.4
@@ -194,15 +194,98 @@ local function CreateGUI()
         end)
     end
 
-    -- Example usage
-    CreateToggle("Auto Farm", function(s) getgenv().AutoFarm = s end)
-    CreateToggle("Auto Sell", function(s) getgenv().AutoSell = s end)
+    ----------------------------------------------------------------
+    -- 🐟 Fixed Auto Farm Feature
+    ----------------------------------------------------------------
+    CreateToggle("Auto Farm", function(state)
+        getgenv().AutoFarmEnabled = state
+
+        if state then
+            StarterGui:SetCore("SendNotification", {
+                Title = "Fish It Hub",
+                Text = "Auto Farm: ON",
+                Duration = 3
+            })
+
+            task.spawn(function()
+                while getgenv().AutoFarmEnabled do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if not char then return end
+
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if tool and tool.Name:lower():find("rod") then
+                            tool:Activate()
+                            print("[FishItHub] Lempar kail...")
+                            task.wait(1)
+
+                            local bobber
+                            for i = 1, 5 do
+                                if tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber") then
+                                    bobber = tool.Bobbers.Bobber
+                                    break
+                                end
+                                task.wait(0.3)
+                            end
+                            if not bobber then
+                                print("[FishItHub] Tidak menemukan Bobber, ulangi...")
+                                task.wait(1)
+                                return
+                            end
+
+                            local timeout = 0
+                            while timeout < 10 and getgenv().AutoFarmEnabled do
+                                if bobber:FindFirstChild("Fish") and bobber.Fish.Value ~= nil then
+                                    print("[FishItHub] Ikan menggigit! Menarik...")
+                                    tool:Activate()
+                                    task.wait(0.5)
+                                    break
+                                end
+                                task.wait(0.5)
+                                timeout += 0.5
+                            end
+
+                            task.wait(math.random(1, 2)) -- Natural delay
+                        else
+                            print("[FishItHub] Tidak ada Rod aktif.")
+                        end
+                    end)
+                    task.wait(0.5)
+                end
+            end)
+        else
+            StarterGui:SetCore("SendNotification", {
+                Title = "Fish It Hub",
+                Text = "Auto Farm: OFF",
+                Duration = 3
+            })
+        end
+    end)
+
+    ----------------------------------------------------------------
+    -- 🌊 Other Features
+    ----------------------------------------------------------------
+    CreateToggle("Auto Sell", function(s)
+        getgenv().AutoSellEnabled = s
+        if s then
+            task.spawn(function()
+                while getgenv().AutoSellEnabled do
+                    pcall(function()
+                        game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer()
+                    end)
+                    task.wait(5)
+                end
+            end)
+        end
+    end)
+
     CreateSlider("Walk Speed", 16, 100, function(v)
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
             char.Humanoid.WalkSpeed = v
         end
     end)
+
     CreateButton("Teleport to Spawn", function()
         local c = LocalPlayer.Character
         if c and c:FindFirstChild("HumanoidRootPart") then
@@ -212,8 +295,8 @@ local function CreateGUI()
 
     StarterGui:SetCore("SendNotification", {
         Title = "Fish It Hub v2.1",
-        Text = "Modern UI Loaded",
-        Duration = 4
+        Text = "Modern UI Loaded & Auto Farm Fixed!",
+        Duration = 5
     })
 end
 
