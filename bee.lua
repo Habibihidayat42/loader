@@ -1,4 +1,4 @@
--- Fish It Hub v1.4 by Grok (Minimize + Draggable GUI for Delta)
+-- Fish It Hub v1.5 by Grok (Mobile-Optimized GUI for Delta on Android)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
@@ -17,10 +17,10 @@ local function CreateGUI()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Enabled = true
     
-    -- Main Frame
+    -- Main Frame (Mobile-Friendly Size)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 300, 0, 400)
-    Frame.Position = UDim2.new(0.7, 0, 0.1, 0)
+    Frame.Size = UDim2.new(0, 250, 0, 350)
+    Frame.Position = UDim2.new(0.65, 0, 0.1, 0)
     Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Frame.BorderSizePixel = 0
     Frame.Visible = true
@@ -28,73 +28,87 @@ local function CreateGUI()
     
     -- Title
     local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, -40, 0, 50)
+    Title.Size = UDim2.new(1, -50, 0, 50)
     Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Title.Text = "Fish It Hub v1.4"
+    Title.Text = "Fish It Hub v1.5"
     Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 20
+    Title.TextSize = 18
     Title.Font = Enum.Font.SourceSansBold
     Title.Parent = Frame
     
-    -- Minimize Button
+    -- Minimize Button (Bigger for Touch)
     local MinimizeButton = Instance.new("TextButton")
-    MinimizeButton.Size = UDim2.new(0, 40, 0, 40)
-    MinimizeButton.Position = UDim2.new(1, -40, 0, 5)
+    MinimizeButton.Size = UDim2.new(0, 50, 0, 50)
+    MinimizeButton.Position = UDim2.new(1, -50, 0, 0)
     MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     MinimizeButton.Text = "-"
     MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MinimizeButton.TextSize = 20
+    MinimizeButton.TextSize = 24
     MinimizeButton.Font = Enum.Font.SourceSansBold
     MinimizeButton.Parent = Frame
     
-    -- Scrolling Frame
+    -- Scrolling Frame (Optimized for Touch)
     local ScrollFrame = Instance.new("ScrollingFrame")
     ScrollFrame.Size = UDim2.new(1, 0, 1, -50)
     ScrollFrame.Position = UDim2.new(0, 0, 0, 50)
     ScrollFrame.BackgroundTransparency = 1
-    ScrollFrame.ScrollBarThickness = 5
+    ScrollFrame.ScrollBarThickness = 8
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     ScrollFrame.Parent = Frame
     
     local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Padding = UDim.new(0, 5)
+    UIListLayout.Padding = UDim.new(0, 8)
     UIListLayout.Parent = ScrollFrame
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     -- Minimize Logic
     local isMinimized = false
     MinimizeButton.MouseButton1Click:Connect(function()
         isMinimized = not isMinimized
         MinimizeButton.Text = isMinimized and "+" or "-"
-        Frame.Size = isMinimized and UDim2.new(0, 300, 0, 50) or UDim2.new(0, 300, 0, 400)
+        Frame.Size = isMinimized and UDim2.new(0, 250, 0, 50) or UDim2.new(0, 250, 0, 350)
         ScrollFrame.Visible = not isMinimized
         print("[FishItHub] GUI " .. (isMinimized and "Minimized" or "Maximized"))
     end)
     
-    -- Drag Logic
+    -- Drag Logic (Touch-Optimized)
     local dragging, dragStart, startPos
-    Frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = Frame.Position
-        end
-    end)
-    Frame.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    local function startDrag(input)
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        print("[FishItHub] Drag Started")
+    end
+    local function updateDrag(input)
+        if dragging then
             local delta = input.Position - dragStart
             Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
+    end
+    local function endDrag()
+        dragging = false
+        print("[FishItHub] Drag Ended")
+    end
+    
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            startDrag(input)
+        end
+    end)
+    Frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateDrag(input)
+        end
     end)
     Frame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            endDrag()
         end
     end)
     
     -- Function to create Toggle Button
     local function CreateToggle(name, callback)
         local ToggleButton = Instance.new("TextButton")
-        ToggleButton.Size = UDim2.new(1, -10, 0, 40)
+        ToggleButton.Size = UDim2.new(1, -10, 0, 45)
         ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         ToggleButton.Text = name .. ": OFF"
         ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -114,26 +128,28 @@ local function CreateGUI()
     -- Function to create Button
     local function CreateButton(name, callback)
         local Button = Instance.new("TextButton")
-        Button.Size = UDim2.new(1, -10, 0, 40)
+        Button.Size = UDim2.new(1, -10, 0, 45)
         Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         Button.Text = name
         Button.TextColor3 = Color3.fromRGB(255, 255, 255)
         Button.TextSize = 16
         Button.Font = Enum.Font.SourceSans
         Button.Parent = ScrollFrame
-        Button.MouseButton1Click:Connect(callback)
+        Button.MouseButton1Click:Connect(function()
+            callback()
+        end)
         ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
     end
     
     -- Function to create Slider
     local function CreateSlider(name, min, max, callback)
         local SliderFrame = Instance.new("Frame")
-        SliderFrame.Size = UDim2.new(1, -10, 0, 60)
+        SliderFrame.Size = UDim2.new(1, -10, 0, 65)
         SliderFrame.BackgroundTransparency = 1
         SliderFrame.Parent = ScrollFrame
     
         local Label = Instance.new("TextLabel")
-        Label.Size = UDim2.new(1, 0, 0, 20)
+        Label.Size = UDim2.new(1, 0, 0, 25)
         Label.BackgroundTransparency = 1
         Label.Text = name .. ": " .. min
         Label.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -142,8 +158,8 @@ local function CreateGUI()
         Label.Parent = SliderFrame
     
         local Slider = Instance.new("TextButton")
-        Slider.Size = UDim2.new(1, -10, 0, 20)
-        Slider.Position = UDim2.new(0, 5, 0, 25)
+        Slider.Size = UDim2.new(1, -10, 0, 25)
+        Slider.Position = UDim2.new(0, 5, 0, 30)
         Slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         Slider.Text = ""
         Slider.Parent = SliderFrame
@@ -155,17 +171,17 @@ local function CreateGUI()
     
         local dragging = false
         Slider.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = true
             end
         end)
         Slider.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = false
             end
         end)
         UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
                 local relativeX = (input.Position.X - Slider.AbsolutePosition.X) / Slider.AbsoluteSize.X
                 relativeX = math.clamp(relativeX, 0, 1)
                 local value = math.floor(min + (max - min) * relativeX)
@@ -259,9 +275,9 @@ local function CreateGUI()
     
     -- Info Label
     local InfoLabel = Instance.new("TextLabel")
-    InfoLabel.Size = UDim2.new(1, -10, 0, 60)
+    InfoLabel.Size = UDim2.new(1, -10, 0, 70)
     InfoLabel.BackgroundTransparency = 1
-    InfoLabel.Text = "Script by Grok\nCek console (F9) untuk debug\nToggle: Right Shift\nMinimize: -/+ Button"
+    InfoLabel.Text = "Script by Grok\nCek Delta Logs untuk debug\nToggle: Right Shift\nMinimize: -/+ Button\nDrag: Tap & Geser"
     InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     InfoLabel.TextSize = 14
     InfoLabel.Font = Enum.Font.SourceSans
@@ -301,13 +317,14 @@ UserInputService.InputBegan:Connect(function(input)
         guiVisible = not guiVisible
         if CurrentGUI and CurrentGUI:FindFirstChild("Frame") then
             CurrentGUI.Frame.Visible = guiVisible
+            print("[FishItHub] GUI Visibility: " .. (guiVisible and "Shown" or "Hidden"))
         end
     end
 end)
 
 -- Notification
 StarterGui:SetCore("SendNotification", {
-    Title = "Fish It Hub v1.4 Loaded!",
-    Text = "GUI aktif. Right Shift: toggle, -/+: minimize, Drag: geser. Cek F9 jika error.",
+    Title = "Fish It Hub v1.5 Loaded!",
+    Text = "GUI aktif. Right Shift: toggle, -/+: minimize, Tap & Geser: drag. Cek Delta Logs jika error.",
     Duration = 10
 })
