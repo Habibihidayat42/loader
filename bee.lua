@@ -1,5 +1,6 @@
--- FISH IT AUTO FARM HUB - EDUKASI (Oktober 2025) - DELTA COMPATIBLE
+-- FISH IT AUTO FARM HUB - EDUKASI (Oktober 2025) - DELTA COMPATIBLE V2
 -- UI: Custom Modern (No External Lib) - 100% Work on Delta Executor
+-- Fix: Tambah safeguards untuk nil references, improved ESP check, auto-respawn full handle
 -- Fitur: Auto Fish, Auto Sell, Perfect Cast, Infinite Bait, ESP, Speed, Teleport
 
 local Players = game:GetService("Players")
@@ -10,10 +11,15 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- === REMOTES ===
-local FishRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fish")
-local SellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellFish")
-local CastRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CastRod")
+-- === REMOTES (dengan check jika ada) ===
+local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+local FishRemote = Remotes and Remotes:FindFirstChild("Fish")
+local SellRemote = Remotes and Remotes:FindFirstChild("SellFish")
+local CastRemote = Remotes and Remotes:FindFirstChild("CastRod")
+
+if not (FishRemote and SellRemote and CastRemote) then
+    warn("Remotes tidak ditemukan! Script mungkin tidak berfungsi penuh.")
+end
 
 -- === CONFIG ===
 local Config = {
@@ -29,10 +35,10 @@ local Config = {
 
 -- === CHARACTER HANDLER ===
 local Character, Humanoid, RootPart
-local function SetupCharacter()
-    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    Humanoid = Character:WaitForChild("Humanoid")
-    RootPart = Character:WaitForChild("HumanoidRootPart")
+local function SetupCharacter(newChar)
+    Character = newChar or LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid = Character:WaitForChild("Humanoid", 5)
+    RootPart = Character:WaitForChild("HumanoidRootPart", 5)
 end
 SetupCharacter()
 LocalPlayer.CharacterAdded:Connect(SetupCharacter)
@@ -41,8 +47,9 @@ LocalPlayer.CharacterAdded:Connect(SetupCharacter)
 
 -- Auto Perfect Cast
 spawn(function()
-    while wait(0.05) do
-        if Config.AutoPerfect and LocalPlayer.PlayerGui:FindFirstChild("FishingGui") then
+    while true do
+        wait(0.05)
+        if Config.AutoPerfect and CastRemote and LocalPlayer.PlayerGui:FindFirstChild("FishingGui") then
             local gui = LocalPlayer.PlayerGui.FishingGui
             if gui:FindFirstChild("PerfectBar") then
                 local bar = gui.PerfectBar.Fill
@@ -56,8 +63,9 @@ end)
 
 -- Auto Fish
 spawn(function()
-    while wait(0.3) do
-        if Config.AutoFish then
+    while true do
+        wait(0.3)
+        if Config.AutoFish and FishRemote then
             FishRemote:FireServer()
         end
     end
@@ -65,19 +73,21 @@ end)
 
 -- Auto Sell
 spawn(function()
-    while wait(Config.SellInterval) do
-        if Config.AutoSell then
+    while true do
+        if Config.AutoSell and SellRemote then
             SellRemote:FireServer()
         end
+        wait(Config.SellInterval)
     end
 end)
 
 -- Infinite Bait
 spawn(function()
-    while wait(0.5) do
+    while true do
+        wait(0.5)
         if Config.InfiniteBait then
             local bait = LocalPlayer:FindFirstChild("Bait")
-            if bait and bait.Value < 100 then
+            if bait and bait:IsA("IntValue") and bait.Value < 100 then
                 bait.Value = 9999
             end
         end
@@ -86,10 +96,12 @@ end)
 
 -- Speed Hack
 RunService.Heartbeat:Connect(function()
-    if Config.SpeedHack and Humanoid then
-        Humanoid.WalkSpeed = Config.Speed
-    elseif Humanoid then
-        Humanoid.WalkSpeed = 16
+    if Humanoid then
+        if Config.SpeedHack then
+            Humanoid.WalkSpeed = Config.Speed
+        else
+            Humanoid.WalkSpeed = 16
+        end
     end
 end)
 
@@ -97,29 +109,37 @@ end)
 local ESPBoxes = {}
 RunService.RenderStepped:Connect(function()
     if not Config.ESP then
-        for _, box in pairs(ESPBoxes) do
-            if box then box:Destroy() end
+        for _, items in pairs(ESPBoxes) do
+            if items.box then items.box:Destroy() end
+            if items.label then items.label:Destroy() end
         end
         ESPBoxes = {}
         return
     end
 
-    for _, fish in pairs(Workspace:FindFirstChild("Fishes", true):GetChildren()) do
-        if fish:IsA("Model") and fish:FindFirstChild("HumanoidRootPart") and not ESPBoxes[fish] then
+    local fishesFolder = Workspace:FindFirstChild("Fishes")
+    if not fishesFolder then return end
+
+    for _, fish in pairs(fishesFolder:GetChildren()) do
+        if fish:IsA("Model") and fish:FindFirstChild("PrimaryPart") and not ESPBoxes[fish] then
+            local primary = fish.PrimaryPart or fish:FindFirstChildWhichIsA("BasePart")
+            if not primary then continue end
+
             local box = Instance.new("BoxHandleAdornment")
             box.Size = fish:GetExtentsSize() + Vector3.new(1,1,1)
-            box.Adornee = fish
+            box.Adornee = primary
             box.Color3 = Color3.fromRGB(0, 255, 0)
             box.Transparency = 0.7
             box.AlwaysOnTop = true
             box.ZIndex = 10
-            box.Parent = fish
+            box.Parent = primary
 
             local label = Instance.new("BillboardGui")
-            label.Adornee = fish.HumanoidRootPart
+            label.Adornee = primary
             label.Size = UDim2.new(0, 200, 0, 50)
             label.StudsOffset = Vector3.new(0, 3, 0)
             label.AlwaysOnTop = true
+            label.Parent = primary
 
             local text = Instance.new("TextLabel", label)
             text.Size = UDim2.new(1,0,1,0)
@@ -130,54 +150,53 @@ RunService.RenderStepped:Connect(function()
             text.Font = Enum.Font.GothamBold
             text.TextSize = 16
 
-            label.Parent = fish
-            ESPBoxes[fish] = {box, label}
+            ESPBoxes[fish] = {box = box, label = label}
         end
     end
 end)
 
--- Teleport
+-- Teleport dengan Tween jika memungkinkan
 local function TeleportTo(spotName)
-    local spot = Workspace:FindFirstChild("FishingSpots"):FindFirstChild(spotName or "DeepSea")
-    if spot and RootPart then
-        RootPart.CFrame = spot.CFrame + Vector3.new(0, 5, 0)
+    local fishingSpots = Workspace:FindFirstChild("FishingSpots")
+    if not (fishingSpots and RootPart) then return end
+
+    local spot = fishingSpots:FindFirstChild(spotName or "DeepSea")
+    if spot then
+        local target = spot.CFrame + Vector3.new(0, 5, 0)
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(RootPart, tweenInfo, {CFrame = target})
+        tween:Play()
     end
 end
 
 -- === CUSTOM MODERN UI (NO EXTERNAL LIB) ===
 local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local CloseBtn = Instance.new("TextButton")
-local Content = Instance.new("Frame")
-local UIListLayout = Instance.new("UIListLayout")
-
 ScreenGui.Parent = PlayerGui
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 
--- Main Frame
+local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 380, 0, 500)
-MainFrame.Position = UDim2.new(0, 50, 0, 50)
+MainFrame.Position = UDim2.new(0.5, -190, 0.5, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
--- Corner
 local corner = Instance.new("UICorner", MainFrame)
 corner.CornerRadius = UDim.new(0, 12)
 
--- Title Bar
+local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 50)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Fish It Hub - Delta Edition"
+Title.Text = "Fish It Hub - Delta Edition V2"
 Title.TextColor3 = Color3.fromRGB(0, 255, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.Parent = MainFrame
 
--- Close Button
+local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(1, -40, 0, 10)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
@@ -188,12 +207,17 @@ CloseBtn.Parent = MainFrame
 local closeCorner = Instance.new("UICorner", CloseBtn)
 closeCorner.CornerRadius = UDim.new(0, 8)
 
--- Content
+local Content = Instance.new("ScrollingFrame")
 Content.Size = UDim2.new(1, -20, 1, -60)
 Content.Position = UDim2.new(0, 10, 0, 50)
 Content.BackgroundTransparency = 1
+Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Content.ScrollingDirection = Enum.ScrollingDirection.Y
+Content.ScrollBarThickness = 5
 Content.Parent = MainFrame
 
+local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Content
 UIListLayout.Padding = UDim.new(0, 8)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -218,8 +242,8 @@ local function CreateToggle(name, text, callback)
     Label.TextColor3 = Color3.new(1,1,1)
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = Toggle
     Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.Parent = Toggle
 
     Btn.Size = UDim2.new(0, 50, 0, 25)
     Btn.Position = UDim2.new(1, -65, 0.5, -12.5)
@@ -299,6 +323,7 @@ local function CreateSlider(text, min, max, default, callback)
     ValueLabel.Parent = Frame
 
     local dragging = false
+    local mouse = LocalPlayer:GetMouse()
     SliderBg.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -311,7 +336,6 @@ local function CreateSlider(text, min, max, default, callback)
     end)
     RunService.RenderStepped:Connect(function()
         if dragging then
-            local mouse = LocalPlayer:GetMouse()
             local percent = math.clamp((mouse.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
             local value = math.floor(min + (max - min) * percent)
             SliderFill.Size = UDim2.new(percent, 0, 1, 0)
@@ -327,14 +351,12 @@ end
 CreateToggle("AutoFish", "Auto Fish", function(v) Config.AutoFish = v end)
 CreateToggle("AutoPerfect", "Auto Perfect Cast", function(v) Config.AutoPerfect = v end)
 CreateToggle("AutoSell", "Auto Sell", function(v) Config.AutoSell = v end)
-CreateSlider("Sell Interval", 10, 120, 30, function(v) Config.SellInterval = v end)
+CreateSlider("Sell Interval (s)", 10, 120, 30, function(v) Config.SellInterval = v end)
 CreateToggle("InfiniteBait", "Infinite Bait", function(v) Config.InfiniteBait = v end)
 CreateToggle("SpeedHack", "Speed Hack", function(v) Config.SpeedHack = v end)
 CreateSlider("Speed Value", 50, 300, 100, function(v) Config.Speed = v end)
 CreateToggle("ESP", "Fish ESP", function(v) Config.ESP = v end)
-
 CreateButton("Teleport to Deep Sea", function() TeleportTo("DeepSea") end)
-
 CreateButton("Close UI", function()
     ScreenGui:Destroy()
     print("Fish It Hub ditutup.")
@@ -347,6 +369,11 @@ MainFrame.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 MainFrame.InputChanged:Connect(function(input)
@@ -355,14 +382,9 @@ MainFrame.InputChanged:Connect(function(input)
         MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-MainFrame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-print("Fish It Hub - Delta Edition Loaded! UI Modern & Ringan")
+print("Fish It Hub - Delta Edition V2 Loaded! UI Modern & Stabil dengan Safeguards")
