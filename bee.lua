@@ -1,89 +1,135 @@
---// Services
-local Players = cloneref(game:GetService('Players'))
-local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
-local RunService = cloneref(game:GetService('RunService'))
-local GuiService = cloneref(game:GetService('GuiService'))
+--// Inisialisasi Library dan Services
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Robojini/Dropbox/main/Kavo.lua"))() -- Kavo UI untuk GUI
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
---// Variables
-local flags = {}
-local characterposition
-local lp = Players.LocalPlayer
-local fishabundancevisible = false
-local deathcon
-local tooltipmessage
+--// Variabel untuk Flags dan Config
+local flags = {
+    autoFish = false,
+    autoSell = false,
+    infOxygen = false,
+    speedHack = false,
+    teleportZone = nil
+}
+
+--// Data Teleport (Contoh Lokasi di Fish It)
 local TeleportLocations = {
-    ['Zones'] = {
-        ['Moosewood'] = CFrame.new(379.875458, 134.500519, 233.5495, -0.033920113, 8.13274355e-08, 0.999424577, 8.98441925e-08, 1, -7.832
-        -- ... (daftar lokasi lain dipotong untuk singkat, tapi lengkapnya termasuk Moosewood, Lagoon, dll.)
-    }
+    ["Main Island"] = CFrame.new(50, 10, 50),
+    ["Fishing Spot 1"] = CFrame.new(100, 10, 200),
+    ["NPC Shop"] = CFrame.new(0, 10, 100),
+    ["Event Island"] = CFrame.new(300, 10, 400)
 }
 
---// Fungsi Utama: Setup GUI dan Flags
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Fisch Script", "DarkTheme")
+--// Membuat GUI dengan Kavo Library
+local Window = Library.CreateLib("Fish It GUI - Delta", "DarkTheme")
 
-local Tabs = {
-    Teleports = Window:NewTab("Teleports"),
-    Modifications = Window:NewTab("Modifications"),
-    Misc = Window:NewTab("Misc")
-}
+--// Tab Utama
+local MainTab = Window:NewTab("Main")
+local TeleportTab = Window:NewTab("Teleport")
+local PlayerTab = Window:NewTab("Player")
+local MiscTab = Window:NewTab("Misc")
 
-local Teleports = Tabs.Teleports:NewSection("Locations")
-local Modifications = Tabs.Modifications:NewSection("Client")
-local Misc = Tabs.Misc:NewSection("Fishing")
+--// Section untuk Fitur
+local MainSection = MainTab:NewSection("Fishing Automation")
+local TeleportSection = TeleportTab:NewSection("Teleport")
+local PlayerSection = PlayerTab:NewSection("Player Mods")
+local MiscSection = MiscTab:NewSection("Utilities")
+
+--// Fungsi Auto Fish
+MainSection:NewToggle("Auto Fish (Perfect Catch)", "Otomatis tangkap ikan", function(state)
+    flags.autoFish = state
+    if state then
+        spawn(function()
+            while flags.autoFish do
+                ReplicatedStorage.Remotes.FishCatch:FireServer() -- Fire remote untuk catch
+                wait(0.1) -- Anti-lag
+            end
+        end)
+    end
+end)
+
+--// Fungsi Auto Sell
+MainSection:NewToggle("Auto Sell", "Jual ikan otomatis", function(state)
+    flags.autoSell = state
+    if state then
+        spawn(function()
+            while flags.autoSell do
+                ReplicatedStorage.Remotes.SellFish:FireServer("All") -- Jual semua ikan
+                wait(5) -- Interval sell
+            end
+        end)
+    end
+end)
 
 --// Fungsi Teleport
-Teleports:Dropdown('Zones', {location = flags, flag = 'zones', list = ZoneNames})  -- ZoneNames adalah array nama zona
-Teleports:Button('Teleport To Zone', function() 
-    gethrp().CFrame = TeleportLocations['Zones'][flags['zones']] 
+TeleportSection:NewDropdown("Select Zone", "Pilih lokasi teleport", {"Main Island", "Fishing Spot 1", "NPC Shop", "Event Island"}, function(selected)
+    flags.teleportZone = selected
 end)
 
-Teleports:Dropdown('Rod Locations', {location = flags, flag = 'rodlocations', list = RodNames})
-Teleports:Button('Teleport To Rod Location', function() 
-    -- Logika teleport ke lokasi rod
-end)
-
---// Fungsi Modifikasi
-Modifications:Toggle('Infinite Oxygen', {location = flags, flag = 'infoxygen'})
-Modifications:Toggle('No Temp & Oxygen', {location = flags, flag = 'nopeakssystems'})
-
---// Fungsi Fishing Automation
-Misc:Toggle('Always Catch', {location = flags, flag = 'alwayscatch'})
-Misc:Toggle('Fish Abundance Visible', {location = flags, flag = 'fishabundance'})
-
---// Loop Utama untuk Auto Features
-RunService.Heartbeat:Connect(function()
-    if flags['infoxygen'] then
-        -- Set oxygen infinite
-        lp.Character.Humanoid.Health = math.huge  -- Contoh sederhana
-    end
-    if flags['alwayscatch'] then
-        -- Auto catch logic: Fire remote event untuk catch fish
-        ReplicatedStorage.Remotes.CatchFish:FireServer()
+TeleportSection:NewButton("Teleport", "Teleport ke zona terpilih", function()
+    if flags.teleportZone and TeleportLocations[flags.teleportZone] then
+        HumanoidRootPart.CFrame = TeleportLocations[flags.teleportZone]
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Error",
+            Text = "Pilih zona dulu!",
+            Duration = 3
+        })
     end
 end)
 
---// Fungsi Chams untuk Rod (Visual Mod)
-if flags['bodyrodchams'] then
-    local rod = lp.Character:FindFirstChild('RodBodyModel')
-    if rod ~= nil and rod:FindFirstChild('Details') then
-        local rodName = tostring(rod)
-        if RodColors[rodName] and RodMaterials[rodName] then
-            for i,v in pairs(rod['Details']:GetDescendants()) do
-                if v:IsA('BasePart') or v:IsA('MeshPart') then
-                    if RodMaterials[rodName][v.Name..i] and RodColors[rodName][v.Name..i] then
-                        v.Material = RodMaterials[rodName][v.Name..i]
-                        v.Color = RodColors[rodName][v.Name..i]
-                    end
-                end
+--// Fungsi Infinite Oxygen
+PlayerSection:NewToggle("Infinite Oxygen", "Oksigen tak terbatas", function(state)
+    flags.infOxygen = state
+    if state then
+        spawn(function()
+            while flags.infOxygen do
+                ReplicatedStorage.Remotes.UpdateOxygen:FireServer(math.huge) -- Set oxygen
+                wait(1)
             end
-        end
+        end)
     end
-end
+end)
 
---// Cleanup dan Error Handling
-game:GetService('CoreGui').ChildRemoved:Connect(function(child)
-    if child.Name == "Fisch Script" then
+--// Fungsi Speed Hack
+PlayerSection:NewToggle("Speed Hack", "Tambah kecepatan", function(state)
+    flags.speedHack = state
+    if state then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 50 -- Default Roblox = 16
+    else
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+end)
+
+--// Fungsi Anti-AFK
+MiscSection:NewToggle("Anti-AFK", "Cegah kick AFK", function(state)
+    if state then
+        local VirtualUser = game:GetService("VirtualUser")
+        LocalPlayer.Idled:Connect(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+end)
+
+--// Auto Buy Rod (Contoh)
+MiscSection:NewButton("Auto Buy Best Rod", "Beli rod terbaik", function()
+    ReplicatedStorage.Remotes.BuyRod:FireServer("BestRod") -- Ganti dengan ID rod sesuai game
+end)
+
+--// Loop untuk Update Character
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+end)
+
+--// Cleanup GUI
+game:GetService("CoreGui").ChildRemoved:Connect(function(child)
+    if child.Name == "Fish It GUI - Delta" then
         Library:Unload()
     end
 end)
