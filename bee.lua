@@ -1,35 +1,148 @@
--- Fish It Hub Dasar by Grok (Compatible with Delta)
--- Load Kavo UI Library
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+-- Fish It Hub v1.2 by Grok (Custom GUI for Delta)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
--- Create Window
-local Window = Library.CreateLib("Fish It Hub v1.1", "DarkTheme")
+-- Create ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FishItHub"
+ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
--- Tab Utama
-local MainTab = Window:NewTab("Fishing")
+-- Create Main Frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 400)
+Frame.Position = UDim2.new(0.7, 0, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
 
--- Section Farming
-local Section1 = MainTab:NewSection("Fitur Farming")
+-- Create Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.Text = "Fish It Hub v1.2"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = Frame
+
+-- Create Scrolling Frame
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(1, 0, 1, -50)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 50)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 5
+ScrollFrame.Parent = Frame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.Parent = ScrollFrame
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+-- Function to create Toggle Button
+local function CreateToggle(name, callback)
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(1, -10, 0, 40)
+    ToggleButton.Position = UDim2.new(0, 5, 0, 0)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    ToggleButton.Text = name .. ": OFF"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextSize = 16
+    ToggleButton.Font = Enum.Font.SourceSans
+    ToggleButton.Parent = ScrollFrame
+    local state = false
+    ToggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        ToggleButton.Text = name .. (state and ": ON" or ": OFF")
+        ToggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+        callback(state)
+    end)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+end
+
+-- Function to create Button
+local function CreateButton(name, callback)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -10, 0, 40)
+    Button.Position = UDim2.new(0, 5, 0, 0)
+    Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Button.Text = name
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 16
+    Button.Font = Enum.Font.SourceSans
+    Button.Parent = ScrollFrame
+    Button.MouseButton1Click:Connect(callback)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+end
+
+-- Function to create Slider
+local function CreateSlider(name, min, max, callback)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Size = UDim2.new(1, -10, 0, 60)
+    SliderFrame.BackgroundTransparency = 1
+    SliderFrame.Parent = ScrollFrame
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 0, 20)
+    Label.BackgroundTransparency = 1
+    Label.Text = name .. ": " .. min
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextSize = 16
+    Label.Font = Enum.Font.SourceSans
+    Label.Parent = SliderFrame
+
+    local Slider = Instance.new("TextButton")
+    Slider.Size = UDim2.new(1, -10, 0, 20)
+    Slider.Position = UDim2.new(0, 5, 0, 25)
+    Slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Slider.Text = ""
+    Slider.Parent = SliderFrame
+
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new(0, 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    Fill.Parent = Slider
+
+    local dragging = false
+    Slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    Slider.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local relativeX = (input.Position.X - Slider.AbsolutePosition.X) / Slider.AbsoluteSize.X
+            relativeX = math.clamp(relativeX, 0, 1)
+            local value = math.floor(min + (max - min) * relativeX)
+            Fill.Size = UDim2.new(relativeX, 0, 1, 0)
+            Label.Text = name .. ": " .. value
+            callback(value)
+        end
+    end)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+end
 
 -- Auto Farm Toggle
-Section1:NewToggle("Auto Farm (Cast & Reel)", "Otomatis cast dan reel ikan", function(state)
+CreateToggle("Auto Farm (Cast & Reel)", function(state)
     getgenv().AutoFarmEnabled = state
     if state then
         spawn(function()
             while getgenv().AutoFarmEnabled do
-                local player = game.Players.LocalPlayer
+                local player = Players.LocalPlayer
                 local char = player.Character
                 if char then
                     local tool = char:FindFirstChildOfClass("Tool")
                     if tool and tool.Name:find("Rod") then
-                        -- Cast line
                         tool:Activate()
                         wait(2)
-                        
-                        -- Check if fish caught
                         local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
                         if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
-                            -- Reel in
                             tool:Activate()
                             wait(0.5)
                         end
@@ -42,7 +155,7 @@ Section1:NewToggle("Auto Farm (Cast & Reel)", "Otomatis cast dan reel ikan", fun
 end)
 
 -- Auto Sell Toggle
-Section1:NewToggle("Auto Sell Fish", "Jual ikan otomatis setiap 5 detik", function(state)
+CreateToggle("Auto Sell Fish", function(state)
     getgenv().AutoSellEnabled = state
     if state then
         spawn(function()
@@ -57,21 +170,19 @@ Section1:NewToggle("Auto Sell Fish", "Jual ikan otomatis setiap 5 detik", functi
 end)
 
 -- Speed Slider
-Section1:NewSlider("Walk Speed", "Atur kecepatan jalan", 100, 16, function(value)
-    local char = game.Players.LocalPlayer.Character
+CreateSlider("Walk Speed", 16, 100, function(value)
+    local char = Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.WalkSpeed = value
     end
 end)
 
 -- Infinite Jump Toggle
-Section1:NewToggle("Infinite Jump", "Lompat tanpa batas", function(state)
+CreateToggle("Infinite Jump", function(state)
     getgenv().InfJumpEnabled = state
-    local UserInputService = game:GetService("UserInputService")
-    local player = game.Players.LocalPlayer
     UserInputService.JumpRequest:Connect(function()
         if getgenv().InfJumpEnabled then
-            local char = player.Character
+            local char = Players.LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
                 char.Humanoid:ChangeState("Jumping")
             end
@@ -80,21 +191,21 @@ Section1:NewToggle("Infinite Jump", "Lompat tanpa batas", function(state)
 end)
 
 -- Teleport Button
-Section1:NewButton("Teleport to Spawn", "Teleport ke spawn point", function()
-    local player = game.Players.LocalPlayer
+CreateButton("Teleport to Spawn", function()
+    local player = Players.LocalPlayer
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
-        char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0) -- Sesuaikan koordinat
+        char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
     end
 end)
 
 -- Anti-AFK Toggle
-Section1:NewToggle("Anti-AFK", "Cegah kick karena AFK", function(state)
+CreateToggle("Anti-AFK", function(state)
     getgenv().AntiAFKEnabled = state
     if state then
         spawn(function()
             while getgenv().AntiAFKEnabled do
-                local char = game.Players.LocalPlayer.Character
+                local char = Players.LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then
                     char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -0.1)
                     wait(60)
@@ -104,15 +215,31 @@ Section1:NewToggle("Anti-AFK", "Cegah kick karena AFK", function(state)
     end
 end)
 
--- Section Info
-local Section2 = MainTab:NewSection("Info")
-Section2:NewLabel("Script by Grok | Tested on Delta Executor")
-Section2:NewLabel("Jika GUI hilang, cek console (F9) & re-execute")
+-- Create Info Label
+local InfoLabel = Instance.new("TextLabel")
+InfoLabel.Size = UDim2.new(1, -10, 0, 60)
+InfoLabel.Position = UDim2.new(0, 5, 0, 0)
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.Text = "Script by Grok\nJika error, cek console (F9)\nToggle GUI: Right Shift"
+InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoLabel.TextSize = 14
+InfoLabel.Font = Enum.Font.SourceSans
+InfoLabel.TextWrapped = true
+InfoLabel.Parent = ScrollFrame
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 
--- Notifikasi Script Berjalan
-Library:Notify({
+-- Toggle GUI Visibility
+local guiVisible = true
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        guiVisible = not guiVisible
+        Frame.Visible = guiVisible
+    end
+end)
+
+-- Notifikasi Script Loaded
+StarterGui:SetCore("SendNotification", {
     Title = "Fish It Hub Loaded!",
-    Content = "GUI berhasil dimuat. Gunakan toggle untuk fitur.",
-    Duration = 5,
-    Image = 4483362458
+    Text = "GUI aktif. Tekan Right Shift untuk toggle.",
+    Duration = 5
 })
