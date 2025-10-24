@@ -1,4 +1,4 @@
--- Fish It Hub v1.3 by Grok (Custom GUI with Respawn Fix for Delta)
+-- Fish It Hub v1.4 by Grok (Minimize + Draggable GUI for Delta)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 -- Function to Create GUI
 local function CreateGUI()
     if LocalPlayer.PlayerGui:FindFirstChild("FishItHub") then
-        LocalPlayer.PlayerGui.FishItHub:Destroy() -- Destroy old if exists
+        LocalPlayer.PlayerGui.FishItHub:Destroy()
         print("[FishItHub] Destroying old GUI")
     end
     
@@ -28,13 +28,24 @@ local function CreateGUI()
     
     -- Title
     local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, 0, 0, 50)
+    Title.Size = UDim2.new(1, -40, 0, 50)
     Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Title.Text = "Fish It Hub v1.3"
+    Title.Text = "Fish It Hub v1.4"
     Title.TextColor3 = Color3.fromRGB(255, 255, 255)
     Title.TextSize = 20
     Title.Font = Enum.Font.SourceSansBold
     Title.Parent = Frame
+    
+    -- Minimize Button
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Size = UDim2.new(0, 40, 0, 40)
+    MinimizeButton.Position = UDim2.new(1, -40, 0, 5)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    MinimizeButton.Text = "-"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 20
+    MinimizeButton.Font = Enum.Font.SourceSansBold
+    MinimizeButton.Parent = Frame
     
     -- Scrolling Frame
     local ScrollFrame = Instance.new("ScrollingFrame")
@@ -48,6 +59,37 @@ local function CreateGUI()
     UIListLayout.Padding = UDim.new(0, 5)
     UIListLayout.Parent = ScrollFrame
     ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    
+    -- Minimize Logic
+    local isMinimized = false
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        MinimizeButton.Text = isMinimized and "+" or "-"
+        Frame.Size = isMinimized and UDim2.new(0, 300, 0, 50) or UDim2.new(0, 300, 0, 400)
+        ScrollFrame.Visible = not isMinimized
+        print("[FishItHub] GUI " .. (isMinimized and "Minimized" or "Maximized"))
+    end)
+    
+    -- Drag Logic
+    local dragging, dragStart, startPos
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+        end
+    end)
+    Frame.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    Frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
     
     -- Function to create Toggle Button
     local function CreateToggle(name, callback)
@@ -219,7 +261,7 @@ local function CreateGUI()
     local InfoLabel = Instance.new("TextLabel")
     InfoLabel.Size = UDim2.new(1, -10, 0, 60)
     InfoLabel.BackgroundTransparency = 1
-    InfoLabel.Text = "Script by Grok\nCek console (F9) untuk debug\nToggle: Right Shift"
+    InfoLabel.Text = "Script by Grok\nCek console (F9) untuk debug\nToggle: Right Shift\nMinimize: -/+ Button"
     InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     InfoLabel.TextSize = 14
     InfoLabel.Font = Enum.Font.SourceSans
@@ -236,7 +278,7 @@ local CurrentGUI = CreateGUI()
 
 -- Recreate on Character Added (Respawn Fix)
 LocalPlayer.CharacterAdded:Connect(function()
-    wait(1) -- Wait for character load
+    wait(1)
     print("[FishItHub] Recreating GUI on Respawn")
     CurrentGUI = CreateGUI()
 end)
@@ -265,7 +307,7 @@ end)
 
 -- Notification
 StarterGui:SetCore("SendNotification", {
-    Title = "Fish It Hub v1.3 Loaded!",
-    Text = "GUI aktif. Right Shift untuk toggle. Cek F9 jika error.",
+    Title = "Fish It Hub v1.4 Loaded!",
+    Text = "GUI aktif. Right Shift: toggle, -/+: minimize, Drag: geser. Cek F9 jika error.",
     Duration = 10
 })
