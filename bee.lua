@@ -1,135 +1,153 @@
---// Inisialisasi Library dan Services
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Robojini/Dropbox/main/Kavo.lua"))() -- Kavo UI untuk GUI
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+-- Fish It Hub Dasar by Grok (Compatible with Delta)
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
---// Variabel untuk Flags dan Config
-local flags = {
-    autoFish = false,
-    autoSell = false,
-    infOxygen = false,
-    speedHack = false,
-    teleportZone = nil
-}
+local Window = Rayfield:CreateWindow({
+   Name = "Fish It Hub v1.0",
+   LoadingTitle = "Loading Dasar Script...",
+   LoadingSubtitle = "by Grok | Inspired by Chiyo/Atomic",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "FishItHub",
+      FileName = "Config"
+   },
+   KeySystem = false -- No key needed
+})
 
---// Data Teleport (Contoh Lokasi di Fish It)
-local TeleportLocations = {
-    ["Main Island"] = CFrame.new(50, 10, 50),
-    ["Fishing Spot 1"] = CFrame.new(100, 10, 200),
-    ["NPC Shop"] = CFrame.new(0, 10, 100),
-    ["Event Island"] = CFrame.new(300, 10, 400)
-}
+-- Tab Utama
+local MainTab = Window:CreateTab("Fishing", 4483362458) -- Icon ID for fishing rod
 
---// Membuat GUI dengan Kavo Library
-local Window = Library.CreateLib("Fish It GUI - Delta", "DarkTheme")
+local Section1 = MainTab:CreateSection("Fitur Farming")
 
---// Tab Utama
-local MainTab = Window:NewTab("Main")
-local TeleportTab = Window:NewTab("Teleport")
-local PlayerTab = Window:NewTab("Player")
-local MiscTab = Window:NewTab("Misc")
-
---// Section untuk Fitur
-local MainSection = MainTab:NewSection("Fishing Automation")
-local TeleportSection = TeleportTab:NewSection("Teleport")
-local PlayerSection = PlayerTab:NewSection("Player Mods")
-local MiscSection = MiscTab:NewSection("Utilities")
-
---// Fungsi Auto Fish
-MainSection:NewToggle("Auto Fish (Perfect Catch)", "Otomatis tangkap ikan", function(state)
-    flags.autoFish = state
-    if state then
-        spawn(function()
-            while flags.autoFish do
-                ReplicatedStorage.Remotes.FishCatch:FireServer() -- Fire remote untuk catch
-                wait(0.1) -- Anti-lag
+-- Auto Farm Toggle
+local AutoFarmToggle = MainTab:CreateToggle({
+   Name = "Auto Farm (Cast & Reel)",
+   CurrentValue = false,
+   Flag = "AutoFarm",
+   Callback = function(Value)
+      getgenv().AutoFarmEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AutoFarmEnabled do
+               local player = game.Players.LocalPlayer
+               local char = player.Character
+               if char then
+                  local tool = char:FindFirstChildOfClass("Tool")
+                  if tool and tool.Name:find("Rod") then -- Asumsi tool adalah rod
+                     -- Cast line
+                     tool:Activate()
+                     wait(2) -- Wait for potential bite
+                     
+                     -- Check if fish caught (bite detected)
+                     local bobber = tool:FindFirstChild("Bobbers") and tool.Bobbers:FindFirstChild("Bobber")
+                     if bobber and bobber:FindFirstChild("Fish") and bobber.Fish.Value then
+                        -- Reel in
+                        tool:Activate()
+                        wait(0.5)
+                     end
+                  end
+               end
+               wait(1) -- Loop delay
             end
-        end)
-    end
-end)
+         end)
+      end
+   end,
+})
 
---// Fungsi Auto Sell
-MainSection:NewToggle("Auto Sell", "Jual ikan otomatis", function(state)
-    flags.autoSell = state
-    if state then
-        spawn(function()
-            while flags.autoSell do
-                ReplicatedStorage.Remotes.SellFish:FireServer("All") -- Jual semua ikan
-                wait(5) -- Interval sell
+-- Auto Sell Toggle
+local AutoSellToggle = MainTab:CreateToggle({
+   Name = "Auto Sell Fish",
+   CurrentValue = false,
+   Flag = "AutoSell",
+   Callback = function(Value)
+      getgenv().AutoSellEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AutoSellEnabled do
+               -- Fire remote to sell (sesuaikan path remote jika beda)
+               pcall(function()
+                  game:GetService("ReplicatedStorage").Remotes.SellFish:FireServer() -- Asumsi remote name
+               end)
+               wait(5) -- Sell every 5 sec
             end
-        end)
-    end
-end)
+         end)
+      end
+   end,
+})
 
---// Fungsi Teleport
-TeleportSection:NewDropdown("Select Zone", "Pilih lokasi teleport", {"Main Island", "Fishing Spot 1", "NPC Shop", "Event Island"}, function(selected)
-    flags.teleportZone = selected
-end)
+-- Speed Slider
+local SpeedSlider = MainTab:CreateSlider({
+   Name = "Walk Speed",
+   Range = {16, 100},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "WalkSpeed",
+   Callback = function(Value)
+      local char = game.Players.LocalPlayer.Character
+      if char and char:FindFirstChild("Humanoid") then
+         char.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
 
-TeleportSection:NewButton("Teleport", "Teleport ke zona terpilih", function()
-    if flags.teleportZone and TeleportLocations[flags.teleportZone] then
-        HumanoidRootPart.CFrame = TeleportLocations[flags.teleportZone]
-    else
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Error",
-            Text = "Pilih zona dulu!",
-            Duration = 3
-        })
-    end
-end)
-
---// Fungsi Infinite Oxygen
-PlayerSection:NewToggle("Infinite Oxygen", "Oksigen tak terbatas", function(state)
-    flags.infOxygen = state
-    if state then
-        spawn(function()
-            while flags.infOxygen do
-                ReplicatedStorage.Remotes.UpdateOxygen:FireServer(math.huge) -- Set oxygen
-                wait(1)
+-- Infinite Jump Toggle
+local InfJumpToggle = MainTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfJump",
+   Callback = function(Value)
+      getgenv().InfJumpEnabled = Value
+      local UserInputService = game:GetService("UserInputService")
+      local player = game.Players.LocalPlayer
+      UserInputService.JumpRequest:Connect(function()
+         if getgenv().InfJumpEnabled then
+            local char = player.Character
+            if char and char:FindFirstChild("Humanoid") then
+               char.Humanoid:ChangeState("Jumping")
             end
-        end)
-    end
-end)
+         end
+      end)
+   end,
+})
 
---// Fungsi Speed Hack
-PlayerSection:NewToggle("Speed Hack", "Tambah kecepatan", function(state)
-    flags.speedHack = state
-    if state then
-        LocalPlayer.Character.Humanoid.WalkSpeed = 50 -- Default Roblox = 16
-    else
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-    end
-end)
+-- Teleport Button
+local TeleportButton = MainTab:CreateButton({
+   Name = "Teleport to Spawn",
+   Callback = function()
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         char.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0) -- Koordinat spawn default, sesuaikan jika perlu
+      end
+   end,
+})
 
---// Fungsi Anti-AFK
-MiscSection:NewToggle("Anti-AFK", "Cegah kick AFK", function(state)
-    if state then
-        local VirtualUser = game:GetService("VirtualUser")
-        LocalPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
-end)
+-- Anti-AFK Toggle
+local AntiAFKToggle = MainTab:CreateToggle({
+   Name = "Anti-AFK",
+   CurrentValue = false,
+   Flag = "AntiAFK",
+   Callback = function(Value)
+      getgenv().AntiAFKEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AntiAFKEnabled do
+               local char = game.Players.LocalPlayer.Character
+               if char and char:FindFirstChild("HumanoidRootPart") then
+                  char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -0.1) -- Gerak kecil
+                  wait(60) -- Setiap 1 menit
+               end
+            end
+         end)
+      end
+   end,
+})
 
---// Auto Buy Rod (Contoh)
-MiscSection:NewButton("Auto Buy Best Rod", "Beli rod terbaik", function()
-    ReplicatedStorage.Remotes.BuyRod:FireServer("BestRod") -- Ganti dengan ID rod sesuai game
-end)
+local Section2 = MainTab:CreateSection("Info")
+MainTab:CreateParagraph({
+   Title = "Catatan",
+   Content = "Script dasar ini siap pakai. Jika fitur tidak jalan, cek remote events di game (F9 console). Update script jika game patch."
+})
 
---// Loop untuk Update Character
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
-end)
-
---// Cleanup GUI
-game:GetService("CoreGui").ChildRemoved:Connect(function(child)
-    if child.Name == "Fish It GUI - Delta" then
-        Library:Unload()
-    end
-end)
+-- Destroy GUI on close
+Rayfield:Destroy()
