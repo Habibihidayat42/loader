@@ -1,156 +1,177 @@
---// Fish It Hub - Delta UI Compatible Version
---// Created by ChatGPT (Chiyo Style, No Library)
+--// FishIttt.lua UI Version by ZOKADA x GPT
+--// Ringan dan kompatibel dengan Delta Executor
 
--- Services
+--===[ SERVICES ]===--
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
 
--- Flags
-local flags = {
-    autoFish = false,
-    autoSell = false,
-    infOxygen = false,
-    speedHack = false
+--===[ CONFIG ]===--
+local CONFIG = {
+    AutoFish = true,
+    AutoReel = true,
+    FishTimeout = 10,
+    AutoCastDelay = 1,
+    CastKey = Enum.KeyCode.F,
+    ReelKey = Enum.KeyCode.G
 }
 
--- Remote Paths (ganti nama remote sesuai game kamu)
-local Remotes = ReplicatedStorage:FindFirstChild("Remotes") or ReplicatedStorage
-local FishCast = Remotes:FindFirstChild("FishCast") or Remotes:FindFirstChild("CastLine")
-local FishCatch = Remotes:FindFirstChild("FishCatch") or Remotes:FindFirstChild("CatchFish")
-local SellFish = Remotes:FindFirstChild("SellFish") or Remotes:FindFirstChild("SellAll")
+local state = {
+    isFishing = false,
+    currentFish = nil,
+    lastCastTime = 0,
+}
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FishItHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") -- Delta safe
+--===[ UI BUATAN SENDIRI TANPA LIBRARY ]===--
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 250, 0, 320)
-Frame.Position = UDim2.new(0.5, -125, 0.5, -160)
-Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 75)
-Frame.BorderSizePixel = 2
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = ScreenGui
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "FishItUI"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-Title.Text = "🎣 Fish It Hub (Delta)"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-Title.Parent = Frame
+-- Main Frame
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 280, 0, 220)
+main.Position = UDim2.new(0.5, -140, 0.5, -110)
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = gui
 
--- Function for buttons
-local function makeButton(text, y)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 35)
-    btn.Position = UDim2.new(0, 10, 0, y)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 16
-    btn.Text = text
-    btn.Parent = Frame
-    btn.AutoButtonColor = true
-    return btn
+-- Title
+local title = Instance.new("TextLabel")
+title.Text = "🎣 FishIt Hub by ZOKADA"
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Parent = main
+
+-- Function to create toggle buttons
+local function createToggle(name, default, posY, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -20, 0, 30)
+    button.Position = UDim2.new(0, 10, 0, posY)
+    button.BackgroundColor3 = default and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(120, 40, 40)
+    button.Text = name .. ": " .. (default and "ON" or "OFF")
+    button.Font = Enum.Font.Gotham
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 14
+    button.Parent = main
+
+    button.MouseButton1Click:Connect(function()
+        default = not default
+        button.BackgroundColor3 = default and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(120, 40, 40)
+        button.Text = name .. ": " .. (default and "ON" or "OFF")
+        callback(default)
+    end)
 end
 
--- Create Buttons
-local autoFishBtn = makeButton("Auto Fish [OFF]", 45)
-local autoSellBtn = makeButton("Auto Sell [OFF]", 85)
-local oxygenBtn = makeButton("Inf Oxygen [OFF]", 125)
-local speedBtn = makeButton("Speed Hack [OFF]", 165)
-local antiAfkBtn = makeButton("Anti AFK", 205)
-local closeBtn = makeButton("Close UI", 255)
+-- Function to create sliders (for delays)
+local function createSlider(name, min, max, default, posY, callback)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 0, 20)
+    label.Position = UDim2.new(0, 10, 0, posY)
+    label.Text = name .. ": " .. default
+    label.Font = Enum.Font.Gotham
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.BackgroundTransparency = 1
+    label.Parent = main
 
--- Button Functions
-autoFishBtn.MouseButton1Click:Connect(function()
-    flags.autoFish = not flags.autoFish
-    autoFishBtn.Text = "Auto Fish [" .. (flags.autoFish and "ON" or "OFF") .. "]"
-    if flags.autoFish then
-        task.spawn(function()
-            while flags.autoFish do
-                if FishCast then
-                    FishCast:FireServer()
-                end
-                task.wait(1.5)
-                if FishCatch then
-                    FishCatch:FireServer()
-                end
-                task.wait(0.5)
-            end
-        end)
-    end
-end)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, -20, 0, 10)
+    sliderFrame.Position = UDim2.new(0, 10, 0, posY + 25)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.Parent = main
 
-autoSellBtn.MouseButton1Click:Connect(function()
-    flags.autoSell = not flags.autoSell
-    autoSellBtn.Text = "Auto Sell [" .. (flags.autoSell and "ON" or "OFF") .. "]"
-    if flags.autoSell then
-        task.spawn(function()
-            while flags.autoSell do
-                if SellFish then
-                    SellFish:FireServer("All")
-                end
-                task.wait(5)
-            end
-        end)
-    end
-end)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderFrame
 
-oxygenBtn.MouseButton1Click:Connect(function()
-    flags.infOxygen = not flags.infOxygen
-    oxygenBtn.Text = "Inf Oxygen [" .. (flags.infOxygen and "ON" or "OFF") .. "]"
-    if flags.infOxygen then
-        task.spawn(function()
-            while flags.infOxygen do
-                local oxy = Remotes:FindFirstChild("UpdateOxygen")
-                if oxy then oxy:FireServer(math.huge) end
-                task.wait(1)
-            end
-        end)
-    end
-end)
+    local dragging = false
 
-speedBtn.MouseButton1Click:Connect(function()
-    flags.speedHack = not flags.speedHack
-    speedBtn.Text = "Speed Hack [" .. (flags.speedHack and "ON" or "OFF") .. "]"
-    if flags.speedHack then
-        LocalPlayer.Character:WaitForChild("Humanoid").WalkSpeed = 50
-    else
-        LocalPlayer.Character:WaitForChild("Humanoid").WalkSpeed = 16
-    end
-end)
-
-antiAfkBtn.MouseButton1Click:Connect(function()
-    local vu = game:GetService("VirtualUser")
-    LocalPlayer.Idled:Connect(function()
-        vu:CaptureController()
-        vu:ClickButton2(Vector2.new())
+    sliderFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
     end)
-    StarterGui:SetCore("SendNotification", {
-        Title = "Anti AFK",
-        Text = "Aktif! Kamu tidak akan di-kick.",
-        Duration = 4
-    })
-end)
 
-closeBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
 
--- Keep GUI after respawn
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(2)
-    if not ScreenGui or not ScreenGui.Parent then
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local relX = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
+            local value = math.floor(min + (max - min) * relX)
+            fill.Size = UDim2.new(relX, 0, 1, 0)
+            label.Text = name .. ": " .. value
+            callback(value)
+        end
+    end)
+end
+
+--===[ UI ELEMENTS ]===--
+createToggle("Auto Fish", CONFIG.AutoFish, 40, function(val) CONFIG.AutoFish = val end)
+createToggle("Auto Reel", CONFIG.AutoReel, 80, function(val) CONFIG.AutoReel = val end)
+createSlider("Fish Timeout", 2, 15, CONFIG.FishTimeout, 120, function(val) CONFIG.FishTimeout = val end)
+createSlider("Auto Cast Delay", 0, 5, CONFIG.AutoCastDelay, 170, function(val) CONFIG.AutoCastDelay = val end)
+
+--===[ CORE LOGIC ]===--
+local function getFishingRod()
+    return character:FindFirstChild("FishingRod")
+end
+
+local function castRod()
+    local rod = getFishingRod()
+    if rod then
+        rod:Activate()
+        state.isFishing = true
+        state.lastCastTime = tick()
+        print("🎣 CASTED!")
+    end
+end
+
+local function reelIn()
+    local rod = getFishingRod()
+    if rod then
+        rod:Destroy()
+        state.isFishing = false
+        print("💰 REELED & SOLD!")
+    end
+end
+
+local function checkForFish()
+    local rod = getFishingRod()
+    if rod and rod:FindFirstChild("Fish") then
+        state.currentFish = rod.Fish
+        return true
+    end
+    return false
+end
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if CONFIG.AutoFish and not state.isFishing then
+            if tick() - state.lastCastTime > CONFIG.AutoCastDelay then
+                castRod()
+            end
+        end
+        if state.isFishing and checkForFish() then
+            if CONFIG.AutoReel then
+                task.wait(CONFIG.FishTimeout)
+                reelIn()
+            end
+        end
     end
 end)
+
+print("✅ FishIt Hub UI Loaded!")
