@@ -1,11 +1,18 @@
---// FishIt Hub by ZOKADA (Auto Fish Fixed)
---// Optimized for Delta, Fluxus, Codex, etc
+--// FishIt Hub by ZOKADA (Ultimate Fixed)
+--// Versi: 1.2 - Fix UI Duplicate + Real Auto Fish Support
+--// Tested for Delta / Fluxus / Arceus X
 
 --===[ SERVICES ]===--
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+
+--===[ HAPUS UI LAMA AGAR TIDAK DOBEL ]===--
+if game.CoreGui:FindFirstChild("FishItUI") then
+    game.CoreGui.FishItUI:Destroy()
+end
 
 --===[ CONFIGURATIONS ]===--
 local CONFIG = {
@@ -22,6 +29,20 @@ local state = {
     currentFish = nil,
     lastCastTime = 0,
 }
+
+--===[ AUTO DETEKSI REMOTE EVENT ]===--
+local CastEvent, ReelEvent
+
+for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("RemoteEvent") then
+        local name = string.lower(obj.Name)
+        if name:find("cast") then
+            CastEvent = obj
+        elseif name:find("reel") or name:find("catch") then
+            ReelEvent = obj
+        end
+    end
+end
 
 --===[ UI ]===--
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -105,19 +126,19 @@ local function createSlider(name, min, max, default, posY, callback)
     end)
 end
 
-createToggle("Auto Fish", CONFIG.AutoFish, 40, function(val) CONFIG.AutoFish = val end)
-createToggle("Auto Reel", CONFIG.AutoReel, 80, function(val) CONFIG.AutoReel = val end)
-createSlider("Fish Timeout", 2, 15, CONFIG.FishTimeout, 120, function(val) CONFIG.FishTimeout = val end)
-createSlider("Auto Cast Delay", 0, 5, CONFIG.AutoCastDelay, 170, function(val) CONFIG.AutoCastDelay = val end)
+createToggle("Auto Fish", CONFIG.AutoFish, 40, function(v) CONFIG.AutoFish = v end)
+createToggle("Auto Reel", CONFIG.AutoReel, 80, function(v) CONFIG.AutoReel = v end)
+createSlider("Fish Timeout", 2, 15, CONFIG.FishTimeout, 120, function(v) CONFIG.FishTimeout = v end)
+createSlider("Auto Cast Delay", 0, 5, CONFIG.AutoCastDelay, 170, function(v) CONFIG.AutoCastDelay = v end)
 
 --===[ MAIN FUNCTIONS ]===--
 
 local function getFishingRod()
     local rod = character:FindFirstChild("FishingRod")
     if not rod then
-        local backpackRod = player.Backpack:FindFirstChild("FishingRod")
-        if backpackRod then
-            backpackRod.Parent = character -- auto equip
+        local bp = player.Backpack:FindFirstChild("FishingRod")
+        if bp then
+            bp.Parent = character
             task.wait(0.3)
             rod = character:FindFirstChild("FishingRod")
         end
@@ -126,47 +147,48 @@ local function getFishingRod()
 end
 
 local function castRod()
-    local rod = getFishingRod()
-    if rod and not state.isFishing then
-        rod:Activate()
-        state.isFishing = true
-        state.lastCastTime = tick()
-        print("🎣 Casted fishing rod!")
+    if CastEvent then
+        CastEvent:FireServer()
+        print("🎣 [FishIt] Remote Cast Sent")
+    else
+        local rod = getFishingRod()
+        if rod then
+            rod:Activate()
+            print("🎣 [FishIt] Local Cast Triggered")
+        end
     end
+    state.isFishing = true
+    state.lastCastTime = tick()
 end
 
 local function reelIn()
-    local rod = getFishingRod()
-    if rod then
-        rod:Activate()  -- try reel first
-        task.wait(0.5)
-        rod:Destroy()   -- then remove (simulate sell)
-        print("💰 Fish reeled and sold!")
-        state.isFishing = false
+    if ReelEvent then
+        ReelEvent:FireServer()
+        print("💰 [FishIt] Remote Reel Sent")
+    else
+        local rod = getFishingRod()
+        if rod then
+            rod:Destroy()
+            print("💰 [FishIt] Local Reel (Destroy) Done")
+        end
     end
+    state.isFishing = false
 end
 
 local function checkForFish()
     local rod = getFishingRod()
-    if rod and rod:FindFirstChild("Fish") then
-        return true
-    end
-    return false
+    return rod and rod:FindFirstChild("Fish")
 end
 
 --===[ AUTO LOOP FIXED ]===--
 task.spawn(function()
     while task.wait(0.1) do
         if CONFIG.AutoFish then
-            if not state.isFishing then
-                if tick() - state.lastCastTime > CONFIG.AutoCastDelay then
-                    castRod()
-                end
-            elseif checkForFish() then
-                if CONFIG.AutoReel then
-                    task.wait(CONFIG.FishTimeout)
-                    reelIn()
-                end
+            if not state.isFishing and tick() - state.lastCastTime > CONFIG.AutoCastDelay then
+                castRod()
+            elseif state.isFishing and checkForFish() and CONFIG.AutoReel then
+                task.wait(CONFIG.FishTimeout)
+                reelIn()
             end
         end
     end
@@ -175,11 +197,11 @@ end)
 --===[ MANUAL KEYS ]===--
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
-    if input.KeyCode == CONFIG.CastKey and not state.isFishing then
+    if input.KeyCode == CONFIG.CastKey then
         castRod()
-    elseif input.KeyCode == CONFIG.ReelKey and state.isFishing then
+    elseif input.KeyCode == CONFIG.ReelKey then
         reelIn()
     end
 end)
 
-print("✅ FishIt Hub Loaded Successfully (Auto Fish Fixed)")
+print("✅ FishIt Hub Loaded (UI Fixed + Auto Fish Enhanced)")
