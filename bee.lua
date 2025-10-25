@@ -1,5 +1,5 @@
---// FishIttt.lua UI Version by ZOKADA x GPT
---// Ringan dan kompatibel dengan Delta Executor
+--// FishIt Hub by ZOKADA (Auto Fish Fixed)
+--// Optimized for Delta, Fluxus, Codex, etc
 
 --===[ SERVICES ]===--
 local Players = game:GetService("Players")
@@ -7,11 +7,11 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 
---===[ CONFIG ]===--
+--===[ CONFIGURATIONS ]===--
 local CONFIG = {
     AutoFish = true,
     AutoReel = true,
-    FishTimeout = 10,
+    FishTimeout = 8,
     AutoCastDelay = 1,
     CastKey = Enum.KeyCode.F,
     ReelKey = Enum.KeyCode.G
@@ -23,15 +23,11 @@ local state = {
     lastCastTime = 0,
 }
 
---===[ UI BUATAN SENDIRI TANPA LIBRARY ]===--
-
--- ScreenGui
-local gui = Instance.new("ScreenGui")
+--===[ UI ]===--
+local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "FishItUI"
 gui.ResetOnSpawn = false
-gui.Parent = game.CoreGui
 
--- Main Frame
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 280, 0, 220)
 main.Position = UDim2.new(0.5, -140, 0.5, -110)
@@ -41,7 +37,6 @@ main.Active = true
 main.Draggable = true
 main.Parent = gui
 
--- Title
 local title = Instance.new("TextLabel")
 title.Text = "🎣 FishIt Hub by ZOKADA"
 title.Font = Enum.Font.GothamBold
@@ -50,7 +45,6 @@ title.BackgroundTransparency = 1
 title.Size = UDim2.new(1, 0, 0, 30)
 title.Parent = main
 
--- Function to create toggle buttons
 local function createToggle(name, default, posY, callback)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -20, 0, 30)
@@ -70,7 +64,6 @@ local function createToggle(name, default, posY, callback)
     end)
 end
 
--- Function to create sliders (for delays)
 local function createSlider(name, min, max, default, posY, callback)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -20, 0, 20)
@@ -95,19 +88,12 @@ local function createSlider(name, min, max, default, posY, callback)
     fill.Parent = sliderFrame
 
     local dragging = false
-
     sliderFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local relX = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
@@ -119,59 +105,81 @@ local function createSlider(name, min, max, default, posY, callback)
     end)
 end
 
---===[ UI ELEMENTS ]===--
 createToggle("Auto Fish", CONFIG.AutoFish, 40, function(val) CONFIG.AutoFish = val end)
 createToggle("Auto Reel", CONFIG.AutoReel, 80, function(val) CONFIG.AutoReel = val end)
 createSlider("Fish Timeout", 2, 15, CONFIG.FishTimeout, 120, function(val) CONFIG.FishTimeout = val end)
 createSlider("Auto Cast Delay", 0, 5, CONFIG.AutoCastDelay, 170, function(val) CONFIG.AutoCastDelay = val end)
 
---===[ CORE LOGIC ]===--
+--===[ MAIN FUNCTIONS ]===--
+
 local function getFishingRod()
-    return character:FindFirstChild("FishingRod")
+    local rod = character:FindFirstChild("FishingRod")
+    if not rod then
+        local backpackRod = player.Backpack:FindFirstChild("FishingRod")
+        if backpackRod then
+            backpackRod.Parent = character -- auto equip
+            task.wait(0.3)
+            rod = character:FindFirstChild("FishingRod")
+        end
+    end
+    return rod
 end
 
 local function castRod()
     local rod = getFishingRod()
-    if rod then
+    if rod and not state.isFishing then
         rod:Activate()
         state.isFishing = true
         state.lastCastTime = tick()
-        print("🎣 CASTED!")
+        print("🎣 Casted fishing rod!")
     end
 end
 
 local function reelIn()
     local rod = getFishingRod()
     if rod then
-        rod:Destroy()
+        rod:Activate()  -- try reel first
+        task.wait(0.5)
+        rod:Destroy()   -- then remove (simulate sell)
+        print("💰 Fish reeled and sold!")
         state.isFishing = false
-        print("💰 REELED & SOLD!")
     end
 end
 
 local function checkForFish()
     local rod = getFishingRod()
     if rod and rod:FindFirstChild("Fish") then
-        state.currentFish = rod.Fish
         return true
     end
     return false
 end
 
+--===[ AUTO LOOP FIXED ]===--
 task.spawn(function()
     while task.wait(0.1) do
-        if CONFIG.AutoFish and not state.isFishing then
-            if tick() - state.lastCastTime > CONFIG.AutoCastDelay then
-                castRod()
-            end
-        end
-        if state.isFishing and checkForFish() then
-            if CONFIG.AutoReel then
-                task.wait(CONFIG.FishTimeout)
-                reelIn()
+        if CONFIG.AutoFish then
+            if not state.isFishing then
+                if tick() - state.lastCastTime > CONFIG.AutoCastDelay then
+                    castRod()
+                end
+            elseif checkForFish() then
+                if CONFIG.AutoReel then
+                    task.wait(CONFIG.FishTimeout)
+                    reelIn()
+                end
             end
         end
     end
 end)
 
-print("✅ FishIt Hub UI Loaded!")
+--===[ MANUAL KEYS ]===--
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == CONFIG.CastKey and not state.isFishing then
+        castRod()
+    elseif input.KeyCode == CONFIG.ReelKey and state.isFishing then
+        reelIn()
+    end
+end)
+
+print("✅ FishIt Hub Loaded Successfully (Auto Fish Fixed)")
