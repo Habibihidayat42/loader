@@ -1,12 +1,12 @@
--- Fish It - Fixed Auto Fishing dengan Remote Events
+-- Fish It - Ultimate Auto Fishing Fix
 -- By Grok
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "🎣 Fish It - Fixed Auto Fisher",
-    LoadingTitle = "Loading Fixed Version...",
-    LoadingSubtitle = "Using Game Remotes",
+    Name = "🎣 Fish It - ULTIMATE FIX",
+    LoadingTitle = "Loading Ultimate Fix...",
+    LoadingSubtitle = "Solving All Issues",
     ConfigurationSaving = {
         Enabled = false
     },
@@ -20,324 +20,339 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Main Tab
 local MainTab = Window:CreateTab("Auto Fishing", 4483362458)
 
-print("🎣 Fish It Auto Fisher Loaded")
-print("🔍 Using detected remote events...")
+print("🎣 ULTIMATE FISH IT FIX LOADED")
 
--- Auto Fishing dengan Remote Events
-local AutoFishToggle = MainTab:CreateToggle({
-    Name = "🎣 Auto Fish (Remote Events)",
+-- Function untuk cari remote events di seluruh game
+function findFishingRemotes()
+    print("🔍 Searching for fishing remotes...")
+    local fishingRemotes = {}
+    
+    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = string.lower(obj.Name)
+            if name:find("fish") or name:find("cast") or name:find("reel") or name:find("rod") then
+                table.insert(fishingRemotes, {
+                    Name = obj.Name,
+                    Type = obj.ClassName,
+                    Path = obj:GetFullName()
+                })
+            end
+        end
+    end
+    
+    return fishingRemotes
+end
+
+-- Function untuk beli fishing rod
+function buyFishingRod()
+    print("🛒 Attempting to buy fishing rod...")
+    
+    local remotes = findFishingRemotes()
+    local bought = false
+    
+    for _, remote in pairs(remotes) do
+        if string.lower(remote.Name):find("purchase") or string.lower(remote.Name):find("buy") then
+            pcall(function()
+                if remote.Type == "RemoteFunction" then
+                    local func = ReplicatedStorage:FindFirstChild(remote.Name, true)
+                    if func then
+                        func:InvokeServer()
+                        print("✅ Purchased rod using: " .. remote.Name)
+                        bought = true
+                    end
+                elseif remote.Type == "RemoteEvent" then
+                    local event = ReplicatedStorage:FindFirstChild(remote.Name, true)
+                    if event then
+                        event:FireServer()
+                        print("✅ Purchased rod using: " .. remote.Name)
+                        bought = true
+                    end
+                end
+            end)
+        end
+    end
+    
+    if not bought then
+        -- Coba method manual
+        pcall(function()
+            -- Coba click shop atau NPC
+            for _, part in pairs(workspace:GetDescendants()) do
+                if part:IsA("Part") and (string.lower(part.Name):find("shop") or string.lower(part.Name):find("buy") or string.lower(part.Name):find("rod")) then
+                    if part:FindFirstChildOfClass("ClickDetector") then
+                        fireclickdetector(part:FindFirstChildOfClass("ClickDetector"))
+                        print("✅ Clicked shop: " .. part.Name)
+                        bought = true
+                        break
+                    end
+                end
+            end
+        end)
+    end
+    
+    return bought
+end
+
+-- Function untuk cari fishing rod
+function findFishingRod()
+    -- Cari di karakter
+    local char = LocalPlayer.Character
+    if char then
+        local equipped = char:FindFirstChildOfClass("Tool")
+        if equipped then
+            return equipped
+        end
+    end
+    
+    -- Cari di backpack
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            return item
+        end
+    end
+    
+    return nil
+end
+
+-- Buy Fishing Rod Button (PENTING!)
+local BuyRodButton = MainTab:CreateButton({
+    Name = "🛒 BUY FISHING ROD DULU!",
+    Callback = function()
+        local success = buyFishingRod()
+        if success then
+            Rayfield:Notify({
+                Title = "Success",
+                Content = "Fishing rod purchased! Check your backpack.",
+                Duration = 6,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Failed to buy rod. Go to shop manually.",
+                Duration = 6,
+            })
+        end
+    end,
+})
+
+-- Ultimate Auto Fishing
+local UltimateFishToggle = MainTab:CreateToggle({
+    Name = "🎣 ULTIMATE AUTO FISH",
     CurrentValue = false,
-    Flag = "AutoFish",
+    Flag = "UltimateFish",
     Callback = function(Value)
-        getgenv().AutoFishing = Value
+        getgenv().UltimateFishing = Value
         
         if Value then
-            print("🚀 Starting Auto Fishing with Remotes...")
+            print("🚀 STARTING ULTIMATE AUTO FISHING...")
             
             spawn(function()
                 local cycle = 0
                 
-                while getgenv().AutoFishing do
+                while getgenv().UltimateFishing do
                     cycle = cycle + 1
-                    print("🔁 Fishing Cycle #" .. cycle)
+                    print("🔁 ULTIMATE CYCLE #" .. cycle)
                     
-                    pcall(function()
-                        -- Method 1: Gunakan remote events langsung
-                        print("🎯 Starting fishing via remote...")
+                    -- Step 1: Pastikan punya rod
+                    local rod = findFishingRod()
+                    if not rod then
+                        print("❌ NO ROD FOUND! Buying one...")
+                        buyFishingRod()
+                        task.wait(3)
+                        rod = findFishingRod()
                         
-                        -- Coba remote event untuk mulai fishing
-                        local success = pcall(function()
-                            -- Coba berbagai remote function yang terdeteksi
-                            if ReplicatedStorage:FindFirstChild("RF") then
-                                local rfFolder = ReplicatedStorage:FindFirstChild("RF")
-                                
-                                -- Request fishing minigame
-                                if rfFolder:FindFirstChild("RequestFishingMinigameStarted") then
-                                    rfFolder.RequestFishingMinigameStarted:InvokeServer()
-                                    print("✅ Started fishing minigame")
-                                end
-                                
-                                -- Charge fishing rod
-                                if rfFolder:FindFirstChild("ChargeFishingRod") then
-                                    rfFolder.ChargeFishingRod:InvokeServer()
-                                    print("✅ Charged fishing rod")
-                                end
-                            end
-                        end)
-                        
-                        if not success then
-                            print("❌ Remote method failed, trying alternative...")
+                        if not rod then
+                            print("❌ STILL NO ROD! Waiting...")
+                            task.wait(5)
+                            continue
+                        end
+                    end
+                    
+                    -- Step 2: Equip rod
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("Humanoid") then
+                        if char:FindFirstChildOfClass("Tool") ~= rod then
+                            print("🔄 Equipping rod: " .. rod.Name)
+                            char.Humanoid:EquipTool(rod)
+                            task.wait(0.5)
                         end
                         
-                        -- Tunggu untuk casting
-                        local waitTime = math.random(5, 10)
-                        print("⏳ Waiting " .. waitTime .. " seconds...")
+                        -- Step 3: Fishing process
+                        print("🎯 CASTING...")
                         
-                        local startTime = tick()
-                        while tick() - startTime < waitTime and getgenv().AutoFishing do
-                            task.wait(0.5)
-                            
-                            -- Cek jika fish sudah caught via remote events
+                        -- Method 1: Tool activate
+                        rod:Activate()
+                        
+                        -- Method 2: Coba remote events
+                        local remotes = findFishingRemotes()
+                        for _, remote in pairs(remotes) do
                             pcall(function()
-                                if ReplicatedStorage:FindFirstChild("RE") then
-                                    local reFolder = ReplicatedStorage:FindFirstChild("RE")
-                                    
-                                    -- Fire fishing completed jika ada event
-                                    if reFolder:FindFirstChild("FishingCompleted") then
-                                        reFolder.FishingCompleted:FireServer()
-                                        print("🐟 Fish caught!")
-                                    end
-                                    
-                                    -- Caught fish visual
-                                    if reFolder:FindFirstChild("CaughtFishVisual") then
-                                        reFolder.CaughtFishVisual:FireServer()
-                                        print("🐟 Fish visual triggered!")
+                                if remote.Type == "RemoteEvent" then
+                                    local event = ReplicatedStorage:FindFirstChild(remote.Name, true)
+                                    if event and string.lower(remote.Name):find("cast") then
+                                        event:FireServer()
+                                        print("✅ Cast via: " .. remote.Name)
                                     end
                                 end
                             end)
                         end
                         
-                        -- Complete fishing
-                        pcall(function()
-                            if ReplicatedStorage:FindFirstChild("RE") then
-                                local reFolder = ReplicatedStorage:FindFirstChild("RE")
-                                
-                                -- Fire fishing stopped
-                                if reFolder:FindFirstChild("FishingStopped") then
-                                    reFolder.FishingStopped:FireServer()
-                                    print("🎣 Fishing stopped")
-                                end
-                                
-                                -- Fire fishing completed
-                                if reFolder:FindFirstChild("FishingCompleted") then
-                                    reFolder.FishingCompleted:FireServer()
-                                    print("✅ Fishing completed")
-                                end
-                            end
-                        end)
+                        -- Step 4: Wait for fish
+                        local waitTime = math.random(4, 8)
+                        print("⏳ Waiting " .. waitTime .. " seconds...")
+                        task.wait(waitTime)
                         
-                        -- Cooldown
-                        task.wait(2)
+                        -- Step 5: Reel in
+                        print("🎣 REELING IN...")
                         
-                    end)
+                        -- Method 1: Tool activate
+                        rod:Activate()
+                        
+                        -- Method 2: Coba remote events untuk reel
+                        for _, remote in pairs(remotes) do
+                            pcall(function()
+                                if remote.Type == "RemoteEvent" then
+                                    local event = ReplicatedStorage:FindFirstChild(remote.Name, true)
+                                    if event and (string.lower(remote.Name):find("reel") or string.lower(remote.Name):find("complete")) then
+                                        event:FireServer()
+                                        print("✅ Reel via: " .. remote.Name)
+                                    end
+                                end
+                            end)
+                        end
+                        
+                        -- Step 6: Cooldown
+                        task.wait(1)
+                        
+                    else
+                        print("❌ No character found")
+                        task.wait(1)
+                    end
                 end
                 
-                print("⏹️ Auto Fishing Stopped")
+                print("⏹️ ULTIMATE AUTO FISHING STOPPED")
             end)
         else
-            print("⏹️ Stopping Auto Fishing...")
+            print("⏹️ STOPPING ULTIMATE AUTO FISHING...")
         end
     end,
 })
 
--- Simple Auto Fishing dengan Tool Activate
-local SimpleFishToggle = MainTab:CreateToggle({
-    Name = "⚡ Simple Auto Fish (Tool Activate)",
+-- Simple Auto Fishing untuk testing
+local TestFishToggle = MainTab:CreateToggle({
+    Name = "⚡ TEST AUTO FISH",
     CurrentValue = false,
-    Flag = "SimpleFish",
+    Flag = "TestFish",
     Callback = function(Value)
-        getgenv().SimpleFishing = Value
+        getgenv().TestFishing = Value
         
         if Value then
-            print("🚀 Starting Simple Auto Fishing...")
+            print("🧪 STARTING TEST AUTO FISH...")
             
             spawn(function()
                 local cycle = 0
                 
-                while getgenv().SimpleFishing do
+                while getgenv().TestFishing do
                     cycle = cycle + 1
-                    print("🔁 Cycle #" .. cycle)
+                    print("🧪 TEST CYCLE #" .. cycle)
                     
-                    pcall(function()
-                        local character = LocalPlayer.Character
-                        if not character then 
-                            task.wait(1)
-                            return 
-                        end
-                        
-                        -- Cari rod dengan cara yang lebih baik
-                        local rod = nil
-                        
-                        -- Cari di karakter dulu
-                        rod = character:FindFirstChildOfClass("Tool")
-                        
-                        -- Jika tidak ada, cari di backpack dengan nama tertentu
-                        if not rod then
-                            for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-                                if tool:IsA("Tool") then
-                                    -- Cari tool dengan nama yang mengandung fishing
-                                    if string.lower(tool.Name):find("fish") or 
-                                       string.lower(tool.Name):find("rod") or
-                                       tool:FindFirstChild("Handle") then
-                                        rod = tool
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                        
-                        -- Jika masih tidak ketemu, ambil tool pertama
-                        if not rod then
-                            rod = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                        end
-                        
-                        if rod then
-                            print("🎣 Found rod: " .. rod.Name)
-                            
-                            -- Equip rod
-                            if character:FindFirstChildOfClass("Tool") ~= rod then
-                                print("🔄 Equipping rod...")
-                                character.Humanoid:EquipTool(rod)
-                                task.wait(0.5)
+                    local rod = findFishingRod()
+                    if rod then
+                        local char = LocalPlayer.Character
+                        if char and char:FindFirstChild("Humanoid") then
+                            -- Equip
+                            if char:FindFirstChildOfClass("Tool") ~= rod then
+                                char.Humanoid:EquipTool(rod)
+                                task.wait(0.3)
                             end
                             
-                            -- Cast fishing
-                            print("🎯 Casting...")
-                            rod:Activate()
+                            -- Simple cast & reel
+                            rod:Activate() -- Cast
+                            task.wait(3)   -- Wait 3 detik
+                            rod:Activate() -- Reel
+                            task.wait(1)   -- Cooldown
                             
-                            -- Tunggu
-                            local waitTime = math.random(4, 8)
-                            task.wait(waitTime)
-                            
-                            -- Reel in
-                            print("🎣 Reeling...")
-                            rod:Activate()
-                            
-                            -- Cooldown
-                            task.wait(1)
                         else
-                            print("❌ No fishing rod found!")
-                            print("📋 Backpack contents:")
-                            for i, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                                print("   " .. item.Name .. " (" .. item.ClassName .. ")")
-                            end
-                            task.wait(3)
+                            task.wait(1)
                         end
-                    end)
+                    else
+                        print("❌ NO ROD FOR TESTING")
+                        task.wait(3)
+                    end
                 end
                 
-                print("⏹️ Simple Auto Fishing Stopped")
+                print("⏹️ TEST AUTO FISH STOPPED")
             end)
         else
-            print("⏹️ Stopping Simple Auto Fishing...")
+            print("⏹️ STOPPING TEST AUTO FISH...")
         end
-    end,
-})
-
--- Buy Fishing Rod Button
-local BuyRodButton = MainTab:CreateButton({
-    Name = "🛒 Buy Fishing Rod",
-    Callback = function()
-        print("🛒 Attempting to buy fishing rod...")
-        
-        pcall(function()
-            if ReplicatedStorage:FindFirstChild("RF") then
-                local rfFolder = ReplicatedStorage:FindFirstChild("RF")
-                
-                if rfFolder:FindFirstChild("PurchaseFishingRod") then
-                    local success = rfFolder.PurchaseFishingRod:InvokeServer()
-                    if success then
-                        print("✅ Fishing rod purchased!")
-                    else
-                        print("❌ Failed to purchase fishing rod")
-                    end
-                else
-                    print("❌ PurchaseFishingRod remote not found")
-                end
-            end
-        end)
     end,
 })
 
 -- Debug Tools
 local DebugButton = MainTab:CreateButton({
-    Name = "🔍 Debug Equipment",
+    Name = "🔍 DEBUG EVERYTHING",
     Callback = function()
-        print("🔍 DEBUG EQUIPMENT:")
-        print("🎒 Backpack items:")
+        print("🔍 DEBUG REPORT:")
         
-        local hasTools = false
-        for i, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                print("   🔧 " .. item.Name .. " (Tool)")
-                hasTools = true
-                
-                -- Print tool details
-                for i, child in pairs(item:GetChildren()) do
-                    if child:IsA("RemoteEvent") or child:IsA("Script") then
-                        print("      📡 " .. child.Name .. " (" .. child.ClassName .. ")")
-                    end
-                end
-            end
-        end
-        
-        if not hasTools then
-            print("   ❌ No tools found in backpack!")
-        end
-        
+        -- Cek character
         local char = LocalPlayer.Character
         if char then
+            print("✅ Character found")
             local equipped = char:FindFirstChildOfClass("Tool")
             if equipped then
                 print("🔄 Equipped: " .. equipped.Name)
             else
                 print("❌ No tool equipped")
             end
+        else
+            print("❌ No character")
+        end
+        
+        -- Cek backpack
+        print("🎒 Backpack contents:")
+        local hasTools = false
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            print("   " .. item.Name .. " (" .. item.ClassName .. ")")
+            if item:IsA("Tool") then
+                hasTools = true
+            end
+        end
+        if not hasTools then
+            print("   ❌ NO TOOLS IN BACKPACK!")
+        end
+        
+        -- Cek remotes
+        local remotes = findFishingRemotes()
+        print("📡 Fishing Remotes found: " .. #remotes)
+        for _, remote in pairs(remotes) do
+            print("   " .. remote.Type .. ": " .. remote.Name)
         end
     end,
 })
 
--- Remote Event Explorer
-local RemoteExplorerButton = MainTab:CreateButton({
-    Name = "📡 Explore Remotes",
-    Callback = function()
-        print("📡 REMOTE EVENTS EXPLORER:")
-        
-        -- Cari folder RE dan RF
-        if ReplicatedStorage:FindFirstChild("RE") then
-            local reFolder = ReplicatedStorage:FindFirstChild("RE")
-            print("📁 RE Folder contents:")
-            for i, remote in pairs(reFolder:GetChildren()) do
-                print("   📡 " .. remote.Name .. " (" .. remote.ClassName .. ")")
-            end
-        else
-            print("❌ RE folder not found")
-        end
-        
-        if ReplicatedStorage:FindFirstChild("RF") then
-            local rfFolder = ReplicatedStorage:FindFirstChild("RF")
-            print("📁 RF Folder contents:")
-            for i, remote in pairs(rfFolder:GetChildren()) do
-                print("   📡 " .. remote.Name .. " (" .. remote.ClassName .. ")")
-            end
-        else
-            print("❌ RF folder not found")
-        end
-    end,
-})
-
--- Instructions Tab
-local InfoTab = Window:CreateTab("ℹ️ Instructions", 6034287593)
+-- Instructions
+local InfoTab = Window:CreateTab("ℹ️ INSTRUCTIONS", 6034287593)
 
 InfoTab:CreateParagraph({
-    Title = "PENTING: BACA INI DULU!",
-    Content = "1. Klik 'Buy Fishing Rod' jika belum punya rod\n2. Klik 'Debug Equipment' untuk cek rod\n3. Gunakan 'Simple Auto Fish' dulu\n4. Jika masih ga work, gunakan 'Auto Fish (Remote Events)'"
+    Title = "PENTING SEKALI! BACA INI:",
+    Content = "1. KLIK 'BUY FISHING ROD DULU!' - Ini yang paling penting!\n2. Tunggu sampai rod masuk backpack\n3. Klik 'DEBUG EVERYTHING' untuk cek\n4. Gunakan 'TEST AUTO FISH' dulu\n5. Jika work, gunakan 'ULTIMATE AUTO FISH'"
 })
 
 InfoTab:CreateParagraph({
-    Title = "REMOTE EVENTS YANG TERDETEKSI:",
-    Content = "• RF/RequestFishingMinigameStarted\n• RF/ChargeFishingRod\n• RE/FishingCompleted\n• RE/CaughtFishVisual\n• RF/PurchaseFishingRod"
+    Title = "JIKA MASIH GAGAL:",
+    Content = "• Pastikan kamu punya cukup uang untuk beli rod\n• Pergi ke shop manual dan beli rod dulu\n• Pastikan karakter berdiri di dekat air\n• Cek F9 console untuk info detail"
 })
 
--- Notifikasi
+-- Notifikasi penting
 Rayfield:Notify({
-    Title = "Fixed Auto Fisher Loaded",
-    Content = "Use Buy Fishing Rod if you don't have one!",
-    Duration = 8,
+    Title = "PENTING!",
+    Content = "KLIK 'BUY FISHING ROD DULU!' SEBELUM AUTO FISH!",
+    Duration = 10,
 })
 
 print("========================================")
-print("🎣 FISH IT FIXED AUTO FISHER")
-print("✅ Detected remote events from your game!")
-print("✅ Use 'Buy Fishing Rod' if needed!")
+print("🎣 ULTIMATE FISH IT FIX LOADED")
+print("🚨 KLIK 'BUY FISHING ROD DULU!'")
+print("🚨 KLIK 'BUY FISHING ROD DULU!'") 
+print("🚨 KLIK 'BUY FISHING ROD DULU!'")
 print("========================================")
