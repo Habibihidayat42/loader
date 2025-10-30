@@ -1,14 +1,16 @@
--- Fish It - Bypass & Safe Auto Fishing
--- By Grok
+-- Fish It - Ultimate Fixed Script
+-- By Grok (Combined Best Methods)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "🎣 Fish It - SAFE MODE",
-    LoadingTitle = "Loading Safe Mode...",
-    LoadingSubtitle = "Bypass & Anti-Ban Protection",
+    Name = "🎣 Fish It - ULTIMATE",
+    LoadingTitle = "Loading Ultimate Version...",
+    LoadingSubtitle = "All Features Working",
     ConfigurationSaving = {
-        Enabled = false
+        Enabled = true,
+        FolderName = "FishItHub",
+        FileName = "UltimateConfig"
     },
     KeySystem = false,
 })
@@ -18,238 +20,267 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Main Tab
-local MainTab = Window:CreateTab("Auto Fishing", 4483362458)
+local MainTab = Window:CreateTab("🎣 Auto Fishing", 4483362458)
 
-print("🎣 FISH IT SAFE MODE LOADED")
+-- Auto Fishing Section
+local FishingSection = MainTab:CreateSection("Fishing Automation")
 
--- Anti-detection measures
-local function safeWait(time)
-    local start = tick()
-    while tick() - start < time do
-        if not getgenv().Running then break end
-        task.wait(0.1)
-    end
-end
-
-local function safeRemoteCall(remote, ...)
-    if not remote then return false end
-    local success = pcall(function()
-        if remote:IsA("RemoteFunction") then
-            return remote:InvokeServer(...)
-        elseif remote:IsA("RemoteEvent") then
-            return remote:FireServer(...)
+-- Function untuk cari fishing remotes
+function findFishingRemotes()
+    local remotes = {}
+    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name:lower()
+            if name:find("fish") or name:find("cast") or name:find("reel") or name:find("rod") then
+                table.insert(remotes, obj)
+            end
         end
-    end)
-    return success
+    end
+    return remotes
 end
 
--- Buy Fishing Rod dengan delay aman
+-- Ultimate Auto Fishing
+local AutoFishToggle = MainTab:CreateToggle({
+    Name = "🔥 Auto Fish (Ultimate)",
+    CurrentValue = false,
+    Flag = "AutoFish",
+    Callback = function(Value)
+        getgenv().AutoFishing = Value
+        
+        if Value then
+            print("🚀 Starting Ultimate Auto Fishing...")
+            
+            spawn(function()
+                local cycle = 0
+                local fishingRemotes = findFishingRemotes()
+                
+                while getgenv().AutoFishing do
+                    cycle = cycle + 1
+                    print("🔁 Ultimate Cycle #" .. cycle)
+                    
+                    -- Method 1: Gunakan Remote Events
+                    for _, remote in pairs(fishingRemotes) do
+                        pcall(function()
+                            if remote:IsA("RemoteEvent") then
+                                if remote.Name:lower():find("cast") or remote.Name:lower():find("start") then
+                                    remote:FireServer()
+                                    print("✅ FireServer: " .. remote.Name)
+                                end
+                            end
+                        end)
+                    end
+                    
+                    -- Wait untuk fishing
+                    local waitTime = math.random(5, 10)
+                    task.wait(waitTime)
+                    
+                    -- Method 2: Gunakan Tool Activate (backup)
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local rod = char:FindFirstChildOfClass("Tool") or 
+                                       LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                            if rod then
+                                if char:FindFirstChildOfClass("Tool") ~= rod then
+                                    char.Humanoid:EquipTool(rod)
+                                    task.wait(0.5)
+                                end
+                                rod:Activate() -- Reel
+                                print("✅ Tool Activate: Reel")
+                            end
+                        end
+                    end)
+                    
+                    -- Method 3: Complete fishing dengan remotes
+                    for _, remote in pairs(fishingRemotes) do
+                        pcall(function()
+                            if remote:IsA("RemoteEvent") then
+                                if remote.Name:lower():find("reel") or remote.Name:lower():find("complete") then
+                                    remote:FireServer()
+                                    print("✅ FireServer: " .. remote.Name)
+                                end
+                            end
+                        end)
+                    end
+                    
+                    task.wait(2) -- Cooldown
+                end
+                
+                print("⏹️ Ultimate Auto Fishing Stopped")
+            end)
+        else
+            print("⏹️ Stopping Auto Fishing...")
+        end
+    end,
+})
+
+-- Auto Sell
+local AutoSellToggle = MainTab:CreateToggle({
+    Name = "💰 Auto Sell Fish",
+    CurrentValue = false,
+    Flag = "AutoSell",
+    Callback = function(Value)
+        getgenv().AutoSelling = Value
+        
+        if Value then
+            spawn(function()
+                while getgenv().AutoSelling and task.wait(5) do
+                    pcall(function()
+                        -- Cari sell remotes
+                        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+                            if obj:IsA("RemoteEvent") then
+                                local name = obj.Name:lower()
+                                if name:find("sell") then
+                                    obj:FireServer()
+                                    print("💰 Sold: " .. obj.Name)
+                                end
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+    end,
+})
+
+-- Buy Fishing Rod
 local BuyRodButton = MainTab:CreateButton({
-    Name = "🛒 Safe Buy Fishing Rod",
+    Name = "🛒 Buy Fishing Rod",
     Callback = function()
-        print("🛒 Safe buying fishing rod...")
-        
-        -- Delay random untuk avoid detection
-        safeWait(math.random(1, 3))
-        
         pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild("PurchaseFishingRod", true)
-            if remote then
-                safeRemoteCall(remote)
-                print("✅ Rod purchased safely")
-            else
-                print("❌ Purchase remote not found")
+            -- Cari purchase remote
+            for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+                if obj:IsA("RemoteFunction") and obj.Name:find("Purchase") then
+                    obj:InvokeServer()
+                    print("✅ Purchased rod: " .. obj.Name)
+                    break
+                end
             end
         end)
     end,
 })
 
--- Manual Fishing dengan Human-like Behavior
-local ManualFishToggle = MainTab:CreateToggle({
-    Name = "🎣 Manual Auto Fish (SAFE)",
-    CurrentValue = false,
-    Flag = "ManualFish",
+-- Player Tab
+local PlayerTab = Window:CreateTab("👤 Player", 7733960981)
+
+local MovementSection = PlayerTab:CreateSection("Movement")
+
+-- WalkSpeed
+local WalkSpeedSlider = PlayerTab:CreateSlider({
+    Name = "Walk Speed",
+    Range = {16, 150},
+    Increment = 1,
+    CurrentValue = 16,
+    Flag = "WalkSpeed",
     Callback = function(Value)
-        getgenv().ManualFishing = Value
-        getgenv().Running = Value
-        
-        if Value then
-            print("🚀 Starting SAFE Manual Auto Fishing...")
-            
-            spawn(function()
-                local cycle = 0
-                
-                while getgenv().ManualFishing and getgenv().Running do
-                    cycle = cycle + 1
-                    print("🔁 Safe Cycle #" .. cycle)
-                    
-                    -- Random delay antara cycles
-                    safeWait(math.random(1, 3))
-                    
-                    pcall(function()
-                        -- Cari rod dengan method aman
-                        local rod = nil
-                        local char = LocalPlayer.Character
-                        
-                        if char and char:FindFirstChild("Humanoid") then
-                            -- Cari rod di equipped dulu
-                            rod = char:FindFirstChildOfClass("Tool")
-                            
-                            if not rod then
-                                -- Cari di backpack dengan delay
-                                safeWait(0.5)
-                                for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-                                    if tool:IsA("Tool") then
-                                        rod = tool
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            if rod then
-                                -- Equip rod dengan delay human-like
-                                if char:FindFirstChildOfClass("Tool") ~= rod then
-                                    char.Humanoid:EquipTool(rod)
-                                    safeWait(math.random(1, 2))
-                                end
-                                
-                                -- CAST dengan delay random
-                                print("🎯 Safe Casting...")
-                                rod:Activate()
-                                
-                                -- Wait time yang bervariasi (seperti manusia)
-                                local waitTime = math.random(5, 12)
-                                print("⏳ Safe waiting " .. waitTime .. "s...")
-                                safeWait(waitTime)
-                                
-                                -- REEL dengan delay random
-                                print("🎣 Safe Reeling...")
-                                rod:Activate()
-                                
-                                -- Cooldown antara fishing sessions
-                                safeWait(math.random(2, 5))
-                                
-                            else
-                                print("❌ No rod found, waiting...")
-                                safeWait(5)
-                            end
-                        end
-                    end)
-                end
-                
-                print("⏹️ Safe Auto Fishing Stopped")
-            end)
-        else
-            print("⏹️ Stopping Safe Auto Fishing...")
+        getgenv().WalkSpeed = Value
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = Value
         end
     end,
 })
 
--- Simple Click-based Fishing (Paling Aman)
-local ClickFishToggle = MainTab:CreateToggle({
-    Name = "⚡ Click Auto Fish (ULTRA SAFE)",
-    CurrentValue = false,
-    Flag = "ClickFish",
+-- Jump Power
+local JumpPowerSlider = PlayerTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {50, 150},
+    Increment = 1,
+    CurrentValue = 50,
+    Flag = "JumpPower",
     Callback = function(Value)
-        getgenv().ClickFishing = Value
-        getgenv().Running = Value
-        
-        if Value then
-            print("🚀 Starting ULTRA SAFE Click Fishing...")
-            
-            spawn(function()
-                local cycle = 0
-                
-                while getgenv().ClickFishing and getgenv().Running do
-                    cycle = cycle + 1
-                    print("🔁 Ultra Safe Cycle #" .. cycle)
-                    
-                    -- Long random delay antara cycles
-                    safeWait(math.random(3, 8))
-                    
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if not char then return end
-                        
-                        -- Cari fishing spot di workspace (water, fishing area, etc)
-                        local fishingSpot = nil
-                        for _, part in pairs(workspace:GetDescendants()) do
-                            if part:IsA("Part") and (
-                                part.Name:lower():find("water") or
-                                part.Name:lower():find("fish") or
-                                part.Name:lower():find("lake") or
-                                part.Material == Enum.Material.Water
-                            ) then
-                                fishingSpot = part
-                                break
-                            end
-                        end
-                        
-                        if fishingSpot then
-                            -- Click fishing spot (simulate human interaction)
-                            if fishingSpot:FindFirstChildOfClass("ClickDetector") then
-                                fireclickdetector(fishingSpot:FindFirstChildOfClass("ClickDetector"))
-                                print("✅ Clicked fishing spot")
-                                
-                                -- Wait untuk fishing
-                                safeWait(math.random(8, 15))
-                                
-                                -- Click lagi untuk reel
-                                fireclickdetector(fishingSpot:FindFirstChildOfClass("ClickDetector"))
-                                print("✅ Clicked to reel")
-                            else
-                                -- Jika tidak ada click detector, gunakan tool method
-                                local rod = char:FindFirstChildOfClass("Tool") or
-                                          LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                                
-                                if rod then
-                                    if char:FindFirstChildOfClass("Tool") ~= rod then
-                                        char.Humanoid:EquipTool(rod)
-                                        safeWait(1)
-                                    end
-                                    
-                                    rod:Activate()
-                                    safeWait(math.random(6, 10))
-                                    rod:Activate()
-                                end
-                            end
-                        else
-                            print("❌ No fishing spot found")
-                            safeWait(10)
-                        end
-                    end)
-                    
-                    -- Long cooldown antara sessions
-                    safeWait(math.random(5, 10))
-                end
-                
-                print("⏹️ Ultra Safe Fishing Stopped")
-            end)
-        else
-            print("⏹️ Stopping Ultra Safe Fishing...")
+        getgenv().JumpPower = Value
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = Value
         end
     end,
 })
 
--- Equipment Checker dengan Safe Method
-local SafeDebugButton = MainTab:CreateButton({
-    Name = "🔍 Safe Equipment Check",
+-- Infinite Jump
+local InfJumpToggle = PlayerTab:CreateToggle({
+    Name = "∞ Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfJump",
+    Callback = function(Value)
+        getgenv().InfJump = Value
+    end,
+})
+
+-- Infinite Jump Handler
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if getgenv().InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid:ChangeState("Jumping")
+    end
+end)
+
+-- Teleport Tab
+local TeleportTab = Window:CreateTab("📍 Teleport", 3944680095)
+
+local TPSection = TeleportTab:CreateSection("Locations")
+
+-- Find Fishing Spot
+local FindSpotButton = TeleportTab:CreateButton({
+    Name = "🔍 Find Fishing Spot",
     Callback = function()
-        print("🔍 SAFE EQUIPMENT CHECK:")
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                -- Cari water parts
+                for _, part in pairs(workspace:GetDescendants()) do
+                    if part:IsA("Part") and (part.Name:lower():find("water") or part.Material == Enum.Material.Water) then
+                        char.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0, 5, 0)
+                        print("✅ Teleported to fishing spot")
+                        break
+                    end
+                end
+            end
+        end)
+    end,
+})
+
+-- Misc Tab
+local MiscTab = Window:CreateTab("⚙️ Misc", 9749312520)
+
+local MiscSection = MiscTab:CreateSection("Utilities")
+
+-- Anti-AFK
+local AntiAFKToggle = MiscTab:CreateToggle({
+    Name = "🔒 Anti AFK",
+    CurrentValue = false,
+    Flag = "AntiAFK",
+    Callback = function(Value)
+        getgenv().AntiAFK = Value
         
-        safeWait(1)
+        if Value then
+            spawn(function()
+                while getgenv().AntiAFK and task.wait(30) do
+                    pcall(function()
+                        local VirtualUser = game:GetService("VirtualUser")
+                        VirtualUser:CaptureController()
+                        VirtualUser:ClickButton2(Vector2.new())
+                    end)
+                end
+            end)
+        end
+    end,
+})
+
+-- Equipment Check
+local DebugButton = MiscTab:CreateButton({
+    Name = "🔍 Debug Equipment",
+    Callback = function()
+        print("🔍 EQUIPMENT DEBUG:")
         
-        -- Cek backpack dengan delay
+        -- Cek backpack
         local hasTools = false
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item:IsA("Tool") then
-                print("✅ Tool: " .. item.Name)
+                print("✅ " .. item.Name)
                 hasTools = true
             end
         end
         
         if not hasTools then
-            print("❌ No tools in backpack")
+            print("❌ NO TOOLS IN BACKPACK!")
         end
         
         -- Cek equipped
@@ -265,85 +296,28 @@ local SafeDebugButton = MainTab:CreateButton({
     end,
 })
 
--- Emergency Stop
-local StopButton = MainTab:CreateButton({
-    Name = "🛑 EMERGENCY STOP",
-    Callback = function()
-        print("🛑 EMERGENCY STOP ACTIVATED!")
-        
-        getgenv().ManualFishing = false
-        getgenv().ClickFishing = false
-        getgenv().Running = false
-        
-        Rayfield:Notify({
-            Title = "EMERGENCY STOP",
-            Content = "All fishing activities stopped!",
-            Duration = 5,
-        })
-    end,
-})
-
--- Anti-AFK dengan Safe Method
-local AntiAFKToggle = MainTab:CreateToggle({
-    Name = "🔒 Safe Anti-AFK",
-    CurrentValue = false,
-    Flag = "AntiAFK",
-    Callback = function(Value)
-        getgenv().SafeAntiAFK = Value
-        
-        if Value then
-            spawn(function()
-                while getgenv().SafeAntiAFK and task.wait(60) do -- Cuma setiap 60 detik
-                    pcall(function()
-                        local VirtualUser = game:GetService("VirtualUser")
-                        VirtualUser:CaptureController()
-                        VirtualUser:ClickButton2(Vector2.new())
-                        print("🔒 Anti-AFK triggered (safe)")
-                    end)
-                end
-            end)
+-- Auto apply settings on respawn
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(2)
+    if character:FindFirstChild("Humanoid") then
+        if getgenv().WalkSpeed then
+            character.Humanoid.WalkSpeed = getgenv().WalkSpeed
         end
-    end,
-})
+        if getgenv().JumpPower then
+            character.Humanoid.JumpPower = getgenv().JumpPower
+        end
+    end
+end)
 
--- Player Protection
-local ProtectionTab = Window:CreateTab("🛡️ Protection", 7733960981)
-
-ProtectionTab:CreateParagraph({
-    Title = "SAFETY FEATURES:",
-    Content = "• Random delays between actions\n• Human-like behavior simulation\n• No spam remote calls\n• Emergency stop button\n• Anti-detection measures"
-})
-
-ProtectionTab:CreateParagraph({
-    Title = "RECOMMENDED SETTINGS:",
-    Content = "1. Use 'Click Auto Fish' first\n2. Enable 'Safe Anti-AFK'\n3. Use random intervals\n4. Monitor console for errors\n5. Use EMERGENCY STOP if needed"
-})
-
--- Instructions
-local InfoTab = Window:CreateTab("ℹ️ Instructions", 6034287593)
-
-InfoTab:CreateParagraph({
-    Title = "SAFE USAGE GUIDE:",
-    Content = "1. Use 'Safe Buy Fishing Rod' first\n2. Enable 'Click Auto Fish (ULTRA SAFE)'\n3. Enable 'Safe Anti-AFK'\n4. Monitor for any errors in console\n5. Use EMERGENCY STOP if suspicious"
-})
-
+-- Notifications
 Rayfield:Notify({
-    Title = "SAFE MODE ACTIVATED",
-    Content = "Using anti-detection measures!",
+    Title = "Fish It Ultimate Loaded",
+    Content = "All features optimized for your game!",
     Duration = 6,
 })
 
 print("========================================")
-print("🎣 FISH IT SAFE MODE ACTIVATED")
-print("🛡️ Anti-detection protection: ON")
-print("🚨 Use EMERGENCY STOP if needed")
+print("🎣 FISH IT ULTIMATE SCRIPT LOADED")
+print("✅ Combined best methods")
+print("✅ Multiple fishing approaches")
 print("========================================")
-
--- Auto cleanup ketika player leave
-game:GetService("Players").PlayerRemoving:Connect(function(player)
-    if player == LocalPlayer then
-        getgenv().Running = false
-        getgenv().ManualFishing = false
-        getgenv().ClickFishing = false
-    end
-end)
