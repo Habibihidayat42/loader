@@ -1,169 +1,324 @@
---// FishIt Hub v1.4 by ZOKADA (Fix AutoFish + Default OFF)
---// Stable version for Delta / Arceus X / Codex
+-- Fish It Hub Dasar by Grok (Compatible with Delta)
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
---== SERVICES ==--
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local Window = Rayfield:CreateWindow({
+   Name = "Fish It Hub v1.0",
+   LoadingTitle = "Loading Dasar Script...",
+   LoadingSubtitle = "by Grok | Inspired by Chiyo/Atomic",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "FishItHub",
+      FileName = "Config"
+   },
+   KeySystem = false -- No key needed
+})
 
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local gui = Instance.new("ScreenGui")
-gui.Name = "FishItHub_UI"
-gui.ResetOnSpawn = false
-gui.Parent = game.CoreGui
+-- Tab Utama
+local MainTab = Window:CreateTab("Fishing", 4483362458)
 
---== CONFIG ==--
-local CONFIG = {
-    AutoFish = false,    -- DEFAULT: OFF
-    AutoReel = false,    -- DEFAULT: OFF
-    FishTimeout = 8,
-    AutoCastDelay = 1,
-}
+local Section1 = MainTab:CreateSection("Fitur Farming")
 
-local state = {
-    isFishing = false,
-    lastCastTime = 0,
-}
-
---== FIND REMOTE EVENTS ==--
-local CastEvent, ReelEvent
-for _,v in pairs(ReplicatedStorage:GetDescendants()) do
-    if v:IsA("RemoteEvent") then
-        local n = v.Name:lower()
-        if n:find("cast") or n:find("start") then CastEvent = v end
-        if n:find("reel") or n:find("catch") or n:find("end") then ReelEvent = v end
-    end
-end
-
---== FUNCTIONS ==--
-local function equipRod()
-    local rod = character:FindFirstChild("FishingRod")
-    if not rod then
-        local bpRod = player.Backpack:FindFirstChild("FishingRod")
-        if bpRod then
-            bpRod.Parent = character
-            repeat task.wait() until character:FindFirstChild("FishingRod")
-            print("[FishIt] Rod equipped automatically!")
-            return character:FindFirstChild("FishingRod")
-        end
-    end
-    return rod
-end
-
-local function getRod()
-    return character:FindFirstChild("FishingRod") or player.Backpack:FindFirstChild("FishingRod")
-end
-
-local function castRod()
-    local rod = equipRod()
-    if not rod then
-        warn("[FishIt] No Fishing Rod found!")
-        return
-    end
-
-    if CastEvent then
-        CastEvent:FireServer()
-    else
-        pcall(function() rod:Activate() end)
-    end
-
-    state.isFishing = true
-    state.lastCastTime = tick()
-    print("[FishIt] 🎣 Casting rod...")
-end
-
-local function reelIn()
-    local rod = getRod()
-    if not rod then return end
-
-    if ReelEvent then
-        ReelEvent:FireServer()
-    else
-        pcall(function() rod:Activate() end)
-        task.wait(0.5)
-        pcall(function() rod:Destroy() end)
-    end
-    state.isFishing = false
-    print("[FishIt] 💰 Reel in complete!")
-end
-
-local function hasFish()
-    local rod = character:FindFirstChild("FishingRod")
-    return rod and rod:FindFirstChild("Fish")
-end
-
---== AUTO LOOP ==--
-task.spawn(function()
-    while task.wait(0.2) do
-        if CONFIG.AutoFish then
-            if not state.isFishing and tick() - state.lastCastTime > CONFIG.AutoCastDelay then
-                castRod()
-            elseif state.isFishing and hasFish() and CONFIG.AutoReel then
-                task.wait(CONFIG.FishTimeout)
-                reelIn()
+-- Auto Farm Toggle
+local AutoFarmToggle = MainTab:CreateToggle({
+   Name = "Auto Farm (Cast & Reel)",
+   CurrentValue = false,
+   Flag = "AutoFarm",
+   Callback = function(Value)
+      getgenv().AutoFarmEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AutoFarmEnabled and task.wait(1) do
+               local player = game.Players.LocalPlayer
+               local char = player.Character
+               if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                  -- Cari fishing rod
+                  local tool = nil
+                  for _, item in pairs(player.Backpack:GetChildren()) do
+                     if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
+                        tool = item
+                        break
+                     end
+                  end
+                  
+                  if not tool and char:FindFirstChildOfClass("Tool") then
+                     tool = char:FindFirstChildOfClass("Tool")
+                  end
+                  
+                  if tool then
+                     -- Equip tool
+                     if char:FindFirstChildOfClass("Tool") ~= tool then
+                        player.Character.Humanoid:EquipTool(tool)
+                        task.wait(0.5)
+                     end
+                     
+                     -- Cast fishing
+                     tool:Activate()
+                     
+                     -- Tunggu dan cek bobber
+                     local startTime = tick()
+                     local bobberFound = false
+                     
+                     while tick() - startTime < 10 and getgenv().AutoFarmEnabled do
+                        task.wait(0.5)
+                        -- Cari bobber di workspace
+                        for _, obj in pairs(workspace:GetChildren()) do
+                           if obj.Name == "Bobber" and obj:FindFirstChild("Owner") and obj.Owner.Value == player then
+                              bobberFound = true
+                              -- Tunggu sampai ada fish
+                              if obj:FindFirstChild("FishCaught") and obj.FishCaught.Value == true then
+                                 -- Reel in
+                                 tool:Activate()
+                                 task.wait(1)
+                                 break
+                              end
+                           end
+                        end
+                        if bobberFound then break end
+                     end
+                     
+                     -- Jika tidak ada bobber dalam 10 detik, reel anyway
+                     if not bobberFound then
+                        tool:Activate()
+                     end
+                     
+                     task.wait(1)
+                  end
+               end
             end
-        end
-    end
+         end)
+      end
+   end,
+})
+
+-- Auto Sell Toggle
+local AutoSellToggle = MainTab:CreateToggle({
+   Name = "Auto Sell Fish",
+   CurrentValue = false,
+   Flag = "AutoSell",
+   Callback = function(Value)
+      getgenv().AutoSellEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AutoSellEnabled and task.wait(3) do
+               pcall(function()
+                  -- Coba berbagai remote event yang biasa digunakan di fishing games
+                  local remotes = {
+                     "SellAllFish",
+                     "SellFish",
+                     "Sell",
+                     "SellAll",
+                     "TradeFish"
+                  }
+                  
+                  for _, remoteName in pairs(remotes) do
+                      pcall(function()
+                         game:GetService("ReplicatedStorage").Remotes[remoteName]:FireServer()
+                      end)
+                  end
+               end)
+            end
+         end)
+      end
+   end,
+})
+
+-- Auto Upgrade Toggle
+local AutoUpgradeToggle = MainTab:CreateToggle({
+   Name = "Auto Upgrade Rod",
+   CurrentValue = false,
+   Flag = "AutoUpgrade",
+   Callback = function(Value)
+      getgenv().AutoUpgradeEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AutoUpgradeEnabled and task.wait(5) do
+               pcall(function()
+                  -- Coba upgrade rod
+                  local remotes = {
+                     "UpgradeRod",
+                     "Upgrade",
+                     "UpgradeTool"
+                  }
+                  
+                  for _, remoteName in pairs(remotes) do
+                      pcall(function()
+                         game:GetService("ReplicatedStorage").Remotes[remoteName]:FireServer()
+                      end)
+                  end
+               end)
+            end
+         end)
+      end
+   end,
+})
+
+local Section2 = MainTab:CreateSection("Player Modifications")
+
+-- Speed Slider
+local SpeedSlider = MainTab:CreateSlider({
+   Name = "Walk Speed",
+   Range = {16, 200},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "WalkSpeed",
+   Callback = function(Value)
+      getgenv().WalkSpeedValue = Value
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("Humanoid") then
+         char.Humanoid.WalkSpeed = Value
+      end
+      
+      -- Auto apply ketika respawn
+      player.CharacterAdded:Connect(function(character)
+         task.wait(1)
+         if character:FindFirstChild("Humanoid") then
+            character.Humanoid.WalkSpeed = getgenv().WalkSpeedValue or 16
+         end
+      end)
+   end,
+})
+
+-- Jump Power Slider
+local JumpSlider = MainTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 200},
+   Increment = 1,
+   CurrentValue = 50,
+   Flag = "JumpPower",
+   Callback = function(Value)
+      getgenv().JumpPowerValue = Value
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("Humanoid") then
+         char.Humanoid.JumpPower = Value
+      end
+      
+      player.CharacterAdded:Connect(function(character)
+         task.wait(1)
+         if character:FindFirstChild("Humanoid") then
+            character.Humanoid.JumpPower = getgenv().JumpPowerValue or 50
+         end
+      end)
+   end,
+})
+
+-- Infinite Jump Toggle
+local InfJumpToggle = MainTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfJump",
+   Callback = function(Value)
+      getgenv().InfJumpEnabled = Value
+   end,
+})
+
+-- Apply Infinite Jump
+game:GetService("UserInputService").JumpRequest:Connect(function()
+   if getgenv().InfJumpEnabled then
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("Humanoid") then
+         char.Humanoid:ChangeState("Jumping")
+      end
+   end
 end)
 
---== UI CREATION ==--
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 300, 0, 220)
-Frame.Position = UDim2.new(0.5, -150, 0.5, -110)
-Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = gui
+local Section3 = MainTab:CreateSection("Teleports")
 
-local Title = Instance.new("TextLabel")
-Title.Text = "🎣 FishIt Hub by ZOKADA"
-Title.Font = Enum.Font.GothamBold
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundTransparency = 1
-Title.Parent = Frame
+-- Teleport to Fishing Spot
+local TeleportFishingButton = MainTab:CreateButton({
+   Name = "Teleport to Best Fishing Spot",
+   Callback = function()
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         -- Cari area fishing terbaik (biasanya dekat air)
+         local bestSpot = nil
+         for _, part in pairs(workspace:GetChildren()) do
+            if part:IsA("Part") and part.Name:lower():find("water") or part.Name:lower():find("lake") or part.Name:lower():find("river") then
+               bestSpot = part.Position + Vector3.new(0, 5, 0)
+               break
+            end
+         end
+         
+         if not bestSpot then
+            -- Default spot jika tidak ditemukan
+            bestSpot = Vector3.new(0, 20, 0)
+         end
+         
+         char.HumanoidRootPart.CFrame = CFrame.new(bestSpot)
+      end
+   end,
+})
 
-local function makeButton(text, yPos, colorOff, colorOn, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 40)
-    btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    btn.Text = text .. ": OFF"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.BackgroundColor3 = colorOff
-    btn.Parent = Frame
+-- Teleport to Sell Spot
+local TeleportSellButton = MainTab:CreateButton({
+   Name = "Teleport to Sell Spot",
+   Callback = function()
+      local player = game.Players.LocalPlayer
+      local char = player.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         -- Cari NPC atau tempat jual ikan
+         local sellSpot = nil
+         for _, npc in pairs(workspace:GetChildren()) do
+            if npc:IsA("Model") and (npc.Name:lower():find("npc") or npc.Name:lower():find("merchant") or npc.Name:lower():find("seller")) then
+               sellSpot = npc:GetPivot().Position + Vector3.new(0, 3, 0)
+               break
+            end
+         end
+         
+         if not sellSpot then
+            sellSpot = Vector3.new(50, 20, 0) -- Default spot
+         end
+         
+         char.HumanoidRootPart.CFrame = CFrame.new(sellSpot)
+      end
+   end,
+})
 
-    local enabled = false
-    btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        btn.Text = text .. ": " .. (enabled and "ON" or "OFF")
-        btn.BackgroundColor3 = enabled and colorOn or colorOff
-        callback(enabled)
-    end)
-    return btn
-end
+-- Anti-AFK Toggle
+local AntiAFKToggle = MainTab:CreateToggle({
+   Name = "Anti-AFK",
+   CurrentValue = false,
+   Flag = "AntiAFK",
+   Callback = function(Value)
+      getgenv().AntiAFKEnabled = Value
+      if Value then
+         spawn(function()
+            while getgenv().AntiAFKEnabled and task.wait(30) do
+               pcall(function()
+                  local virtualUser = game:GetService("VirtualUser")
+                  virtualUser:CaptureController()
+                  virtualUser:ClickButton2(Vector2.new())
+               end)
+            end
+         end)
+      end
+   end,
+})
 
-makeButton("Auto Fish", 50, Color3.fromRGB(100, 0, 0), Color3.fromRGB(0, 150, 0), function(v)
-    CONFIG.AutoFish = v
+local Section4 = MainTab:CreateSection("Info & Support")
+MainTab:CreateParagraph({
+   Title = "Cara Penggunaan",
+   Content = "1. Pastikan punya fishing rod di inventory\n2. Auto Farm akan otomatis cast dan reel\n3. Auto Sell akan jual ikan setiap 3 detik\n4. Gunakan teleport untuk pindah lokasi"
+})
+
+MainTab:CreateParagraph({
+   Title = "Troubleshooting",
+   Content = "Jika fitur tidak work: \n- Cek F9 untuk error message\n- Pastikan game tidak di-patch\n- Update script jika perlu"
+})
+
+-- Load settings ketika character spawn
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+   task.wait(2)
+   if getgenv().WalkSpeedValue then
+      character.Humanoid.WalkSpeed = getgenv().WalkSpeedValue
+   end
+   if getgenv().JumpPowerValue then
+      character.Humanoid.JumpPower = getgenv().JumpPowerValue
+   end
 end)
 
-makeButton("Auto Reel", 100, Color3.fromRGB(100, 0, 0), Color3.fromRGB(0, 150, 0), function(v)
-    CONFIG.AutoReel = v
-end)
-
-local TimeoutLabel = Instance.new("TextLabel")
-TimeoutLabel.Size = UDim2.new(1, -20, 0, 20)
-TimeoutLabel.Position = UDim2.new(0, 10, 0, 160)
-TimeoutLabel.BackgroundTransparency = 1
-TimeoutLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-TimeoutLabel.Font = Enum.Font.Gotham
-TimeoutLabel.TextSize = 14
-TimeoutLabel.Text = "Fish Timeout: " .. CONFIG.FishTimeout
-TimeoutLabel.Parent = Frame
-
-print("✅ FishIt Hub Loaded v1.4 (Default OFF + AutoEquip Fix)")
+Rayfield:LoadConfiguration() -- Load saved settings
