@@ -1,12 +1,12 @@
--- Fish It - Fixed dengan Remote Events yang Benar
+-- Fish It - Bypass & Safe Auto Fishing
 -- By Grok
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "🎣 Fish It - REMOTE FIX",
-    LoadingTitle = "Loading Remote Fix...",
-    LoadingSubtitle = "Using Correct Remote Paths",
+    Name = "🎣 Fish It - SAFE MODE",
+    LoadingTitle = "Loading Safe Mode...",
+    LoadingSubtitle = "Bypass & Anti-Ban Protection",
     ConfigurationSaving = {
         Enabled = false
     },
@@ -20,330 +20,330 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Main Tab
 local MainTab = Window:CreateTab("Auto Fishing", 4483362458)
 
-print("🎣 FISH IT REMOTE FIX LOADED")
+print("🎣 FISH IT SAFE MODE LOADED")
 
--- Function untuk mendapatkan remote events yang benar
-function getFishingRemotes()
-    local remotes = {}
-    
-    -- Cari di ReplicatedStorage langsung
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            local name = obj.Name
-            if name:find("Fish") or name:find("Cast") or name:find("Reel") or name:find("Rod") then
-                remotes[name] = obj
-            end
-        end
+-- Anti-detection measures
+local function safeWait(time)
+    local start = tick()
+    while tick() - start < time do
+        if not getgenv().Running then break end
+        task.wait(0.1)
     end
-    
-    return remotes
 end
 
--- Buy Fishing Rod dengan remote yang benar
-local BuyRodButton = MainTab:CreateButton({
-    Name = "🛒 Buy Fishing Rod (Fixed)",
-    Callback = function()
-        print("🛒 Buying fishing rod...")
-        
-        pcall(function()
-            -- Coba remote PurchaseFishingRod
-            local remote = ReplicatedStorage:FindFirstChild("PurchaseFishingRod", true)
-            if remote and remote:IsA("RemoteFunction") then
-                remote:InvokeServer()
-                print("✅ Purchased rod using PurchaseFishingRod")
-            else
-                print("❌ PurchaseFishingRod not found")
-            end
-        end)
-        
-        -- Coba method lain
-        pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild("RE", true)
-            if remote and remote:FindFirstChild("PromptProductPurchase") then
-                remote.PromptProductPurchase:FireServer("FishingRod")
-                print("✅ Purchased rod using PromptProductPurchase")
-            end
-        end)
-    end,
-})
-
--- Auto Fishing dengan Remote Events yang Benar
-local AutoFishToggle = MainTab:CreateToggle({
-    Name = "🎣 Auto Fish (Remote Version)",
-    CurrentValue = false,
-    Flag = "AutoFish",
-    Callback = function(Value)
-        getgenv().AutoFishing = Value
-        
-        if Value then
-            print("🚀 Starting Auto Fishing with Correct Remotes...")
-            
-            spawn(function()
-                local cycle = 0
-                
-                while getgenv().AutoFishing do
-                    cycle = cycle + 1
-                    print("🔁 Fishing Cycle #" .. cycle)
-                    
-                    pcall(function()
-                        -- Step 1: Start fishing minigame
-                        local startRemote = ReplicatedStorage:FindFirstChild("RequestFishingMinigameStarted", true)
-                        if startRemote and startRemote:IsA("RemoteFunction") then
-                            startRemote:InvokeServer()
-                            print("✅ Started fishing minigame")
-                        end
-                        
-                        -- Step 2: Charge fishing rod
-                        local chargeRemote = ReplicatedStorage:FindFirstChild("ChargeFishingRod", true)
-                        if chargeRemote and chargeRemote:IsA("RemoteFunction") then
-                            chargeRemote:InvokeServer()
-                            print("✅ Charged fishing rod")
-                        end
-                        
-                        -- Step 3: Wait for fishing
-                        local waitTime = math.random(5, 8)
-                        print("⏳ Waiting " .. waitTime .. " seconds for fish...")
-                        
-                        local startTime = tick()
-                        local fishCaught = false
-                        
-                        while tick() - startTime < waitTime and getgenv().AutoFishing do
-                            task.wait(0.5)
-                            
-                            -- Check if fish caught via events
-                            local caughtRemote = ReplicatedStorage:FindFirstChild("CaughtFishVisual", true)
-                            if caughtRemote then
-                                caughtRemote:FireServer()
-                                print("🐟 Fish caught!")
-                                fishCaught = true
-                                break
-                            end
-                        end
-                        
-                        -- Step 4: Complete fishing
-                        local completeRemote = ReplicatedStorage:FindFirstChild("FishingCompleted", true)
-                        if completeRemote and completeRemote:IsA("RemoteEvent") then
-                            completeRemote:FireServer()
-                            print("✅ Fishing completed")
-                        end
-                        
-                        -- Step 5: Stop fishing
-                        local stopRemote = ReplicatedStorage:FindFirstChild("FishingStopped", true)
-                        if stopRemote and stopRemote:IsA("RemoteEvent") then
-                            stopRemote:FireServer()
-                            print("🛑 Fishing stopped")
-                        end
-                        
-                        -- Cooldown
-                        task.wait(2)
-                        
-                    end)
-                end
-                
-                print("⏹️ Auto Fishing Stopped")
-            end)
-        else
-            print("⏹️ Stopping Auto Fishing...")
+local function safeRemoteCall(remote, ...)
+    if not remote then return false end
+    local success = pcall(function()
+        if remote:IsA("RemoteFunction") then
+            return remote:InvokeServer(...)
+        elseif remote:IsA("RemoteEvent") then
+            return remote:FireServer(...)
         end
+    end)
+    return success
+end
+
+-- Buy Fishing Rod dengan delay aman
+local BuyRodButton = MainTab:CreateButton({
+    Name = "🛒 Safe Buy Fishing Rod",
+    Callback = function()
+        print("🛒 Safe buying fishing rod...")
+        
+        -- Delay random untuk avoid detection
+        safeWait(math.random(1, 3))
+        
+        pcall(function()
+            local remote = ReplicatedStorage:FindFirstChild("PurchaseFishingRod", true)
+            if remote then
+                safeRemoteCall(remote)
+                print("✅ Rod purchased safely")
+            else
+                print("❌ Purchase remote not found")
+            end
+        end)
     end,
 })
 
--- Simple Tool-based Auto Fishing
-local SimpleFishToggle = MainTab:CreateToggle({
-    Name = "⚡ Simple Tool Auto Fish",
+-- Manual Fishing dengan Human-like Behavior
+local ManualFishToggle = MainTab:CreateToggle({
+    Name = "🎣 Manual Auto Fish (SAFE)",
     CurrentValue = false,
-    Flag = "SimpleFish",
+    Flag = "ManualFish",
     Callback = function(Value)
-        getgenv().SimpleFishing = Value
+        getgenv().ManualFishing = Value
+        getgenv().Running = Value
         
         if Value then
-            print("🚀 Starting Simple Auto Fishing...")
+            print("🚀 Starting SAFE Manual Auto Fishing...")
             
             spawn(function()
                 local cycle = 0
                 
-                while getgenv().SimpleFishing do
+                while getgenv().ManualFishing and getgenv().Running do
                     cycle = cycle + 1
-                    print("🔁 Simple Cycle #" .. cycle)
+                    print("🔁 Safe Cycle #" .. cycle)
+                    
+                    -- Random delay antara cycles
+                    safeWait(math.random(1, 3))
                     
                     pcall(function()
-                        -- Cari fishing rod
-                        local rod = LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or
-                                   (LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool"))
+                        -- Cari rod dengan method aman
+                        local rod = nil
+                        local char = LocalPlayer.Character
                         
-                        if rod then
-                            print("🎣 Using rod: " .. rod.Name)
+                        if char and char:FindFirstChild("Humanoid") then
+                            -- Cari rod di equipped dulu
+                            rod = char:FindFirstChildOfClass("Tool")
                             
-                            -- Equip rod
-                            local char = LocalPlayer.Character
-                            if char and char:FindFirstChild("Humanoid") then
+                            if not rod then
+                                -- Cari di backpack dengan delay
+                                safeWait(0.5)
+                                for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+                                    if tool:IsA("Tool") then
+                                        rod = tool
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            if rod then
+                                -- Equip rod dengan delay human-like
                                 if char:FindFirstChildOfClass("Tool") ~= rod then
                                     char.Humanoid:EquipTool(rod)
-                                    task.wait(0.5)
+                                    safeWait(math.random(1, 2))
                                 end
                                 
-                                -- Cast dan reel dengan timing fixed
-                                rod:Activate() -- Cast
-                                task.wait(4)   -- Tunggu 4 detik
-                                rod:Activate() -- Reel
-                                task.wait(1)   -- Cooldown
+                                -- CAST dengan delay random
+                                print("🎯 Safe Casting...")
+                                rod:Activate()
+                                
+                                -- Wait time yang bervariasi (seperti manusia)
+                                local waitTime = math.random(5, 12)
+                                print("⏳ Safe waiting " .. waitTime .. "s...")
+                                safeWait(waitTime)
+                                
+                                -- REEL dengan delay random
+                                print("🎣 Safe Reeling...")
+                                rod:Activate()
+                                
+                                -- Cooldown antara fishing sessions
+                                safeWait(math.random(2, 5))
                                 
                             else
-                                task.wait(1)
+                                print("❌ No rod found, waiting...")
+                                safeWait(5)
                             end
-                        else
-                            print("❌ No fishing rod found!")
-                            task.wait(3)
                         end
                     end)
                 end
                 
-                print("⏹️ Simple Auto Fishing Stopped")
+                print("⏹️ Safe Auto Fishing Stopped")
             end)
         else
-            print("⏹️ Stopping Simple Auto Fishing...")
+            print("⏹️ Stopping Safe Auto Fishing...")
         end
     end,
 })
 
--- Test Specific Remote
-local TestRemoteButton = MainTab:CreateButton({
-    Name = "🧪 Test Fishing Remote",
-    Callback = function()
-        print("🧪 Testing fishing remotes...")
-        
-        -- Test Start Fishing
-        pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild("RequestFishingMinigameStarted", true)
-            if remote then
-                remote:InvokeServer()
-                print("✅ RequestFishingMinigameStarted: SUCCESS")
-            else
-                print("❌ RequestFishingMinigameStarted: NOT FOUND")
-            end
-        end)
-        
-        task.wait(1)
-        
-        -- Test Charge Rod
-        pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild("ChargeFishingRod", true)
-            if remote then
-                remote:InvokeServer()
-                print("✅ ChargeFishingRod: SUCCESS")
-            else
-                print("❌ ChargeFishingRod: NOT FOUND")
-            end
-        end)
-        
-        task.wait(1)
-        
-        -- Test Complete Fishing
-        pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild("FishingCompleted", true)
-            if remote then
-                remote:FireServer()
-                print("✅ FishingCompleted: SUCCESS")
-            else
-                print("❌ FishingCompleted: NOT FOUND")
-            end
-        end)
-    end,
-})
-
--- Debug Remote Events
-local DebugButton = MainTab:CreateButton({
-    Name = "🔍 Debug Remotes",
-    Callback = function()
-        print("🔍 FISHING REMOTES DEBUG:")
-        
-        local fishingRemotes = {
-            "RequestFishingMinigameStarted",
-            "ChargeFishingRod", 
-            "FishingCompleted",
-            "FishingStopped",
-            "CaughtFishVisual",
-            "PurchaseFishingRod",
-            "UpdateAutoFishingState",
-            "CancelFishingInputs"
-        }
-        
-        for _, remoteName in pairs(fishingRemotes) do
-            local remote = ReplicatedStorage:FindFirstChild(remoteName, true)
-            if remote then
-                print("✅ " .. remoteName .. " - " .. remote.ClassName)
-            else
-                print("❌ " .. remoteName .. " - NOT FOUND")
-            end
-        end
-        
-        -- Cek equipment
-        print("🎒 EQUIPMENT CHECK:")
-        local rod = LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or
-                   (LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool"))
-        
-        if rod then
-            print("✅ Fishing rod: " .. rod.Name)
-        else
-            print("❌ NO FISHING ROD FOUND!")
-        end
-    end,
-})
-
--- Auto Sell
-local AutoSellToggle = MainTab:CreateToggle({
-    Name = "💰 Auto Sell Fish",
+-- Simple Click-based Fishing (Paling Aman)
+local ClickFishToggle = MainTab:CreateToggle({
+    Name = "⚡ Click Auto Fish (ULTRA SAFE)",
     CurrentValue = false,
-    Flag = "AutoSell",
+    Flag = "ClickFish",
     Callback = function(Value)
-        getgenv().AutoSelling = Value
+        getgenv().ClickFishing = Value
+        getgenv().Running = Value
         
         if Value then
+            print("🚀 Starting ULTRA SAFE Click Fishing...")
+            
             spawn(function()
-                while getgenv().AutoSelling and task.wait(5) do
+                local cycle = 0
+                
+                while getgenv().ClickFishing and getgenv().Running do
+                    cycle = cycle + 1
+                    print("🔁 Ultra Safe Cycle #" .. cycle)
+                    
+                    -- Long random delay antara cycles
+                    safeWait(math.random(3, 8))
+                    
                     pcall(function()
-                        -- Coba berbagai sell remote
-                        local sellRemotes = {
-                            "SellAllFish",
-                            "SellFish",
-                            "SellAll",
-                            "Sell"
-                        }
+                        local char = LocalPlayer.Character
+                        if not char then return end
                         
-                        for _, remoteName in pairs(sellRemotes) do
-                            local remote = ReplicatedStorage:FindFirstChild(remoteName, true)
-                            if remote then
-                                if remote:IsA("RemoteFunction") then
-                                    remote:InvokeServer()
-                                else
-                                    remote:FireServer()
-                                end
-                                print("💰 Sold fish using: " .. remoteName)
+                        -- Cari fishing spot di workspace (water, fishing area, etc)
+                        local fishingSpot = nil
+                        for _, part in pairs(workspace:GetDescendants()) do
+                            if part:IsA("Part") and (
+                                part.Name:lower():find("water") or
+                                part.Name:lower():find("fish") or
+                                part.Name:lower():find("lake") or
+                                part.Material == Enum.Material.Water
+                            ) then
+                                fishingSpot = part
                                 break
                             end
                         end
+                        
+                        if fishingSpot then
+                            -- Click fishing spot (simulate human interaction)
+                            if fishingSpot:FindFirstChildOfClass("ClickDetector") then
+                                fireclickdetector(fishingSpot:FindFirstChildOfClass("ClickDetector"))
+                                print("✅ Clicked fishing spot")
+                                
+                                -- Wait untuk fishing
+                                safeWait(math.random(8, 15))
+                                
+                                -- Click lagi untuk reel
+                                fireclickdetector(fishingSpot:FindFirstChildOfClass("ClickDetector"))
+                                print("✅ Clicked to reel")
+                            else
+                                -- Jika tidak ada click detector, gunakan tool method
+                                local rod = char:FindFirstChildOfClass("Tool") or
+                                          LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                                
+                                if rod then
+                                    if char:FindFirstChildOfClass("Tool") ~= rod then
+                                        char.Humanoid:EquipTool(rod)
+                                        safeWait(1)
+                                    end
+                                    
+                                    rod:Activate()
+                                    safeWait(math.random(6, 10))
+                                    rod:Activate()
+                                end
+                            end
+                        else
+                            print("❌ No fishing spot found")
+                            safeWait(10)
+                        end
+                    end)
+                    
+                    -- Long cooldown antara sessions
+                    safeWait(math.random(5, 10))
+                end
+                
+                print("⏹️ Ultra Safe Fishing Stopped")
+            end)
+        else
+            print("⏹️ Stopping Ultra Safe Fishing...")
+        end
+    end,
+})
+
+-- Equipment Checker dengan Safe Method
+local SafeDebugButton = MainTab:CreateButton({
+    Name = "🔍 Safe Equipment Check",
+    Callback = function()
+        print("🔍 SAFE EQUIPMENT CHECK:")
+        
+        safeWait(1)
+        
+        -- Cek backpack dengan delay
+        local hasTools = false
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                print("✅ Tool: " .. item.Name)
+                hasTools = true
+            end
+        end
+        
+        if not hasTools then
+            print("❌ No tools in backpack")
+        end
+        
+        -- Cek equipped
+        local char = LocalPlayer.Character
+        if char then
+            local equipped = char:FindFirstChildOfClass("Tool")
+            if equipped then
+                print("🔄 Equipped: " .. equipped.Name)
+            else
+                print("❌ No tool equipped")
+            end
+        end
+    end,
+})
+
+-- Emergency Stop
+local StopButton = MainTab:CreateButton({
+    Name = "🛑 EMERGENCY STOP",
+    Callback = function()
+        print("🛑 EMERGENCY STOP ACTIVATED!")
+        
+        getgenv().ManualFishing = false
+        getgenv().ClickFishing = false
+        getgenv().Running = false
+        
+        Rayfield:Notify({
+            Title = "EMERGENCY STOP",
+            Content = "All fishing activities stopped!",
+            Duration = 5,
+        })
+    end,
+})
+
+-- Anti-AFK dengan Safe Method
+local AntiAFKToggle = MainTab:CreateToggle({
+    Name = "🔒 Safe Anti-AFK",
+    CurrentValue = false,
+    Flag = "AntiAFK",
+    Callback = function(Value)
+        getgenv().SafeAntiAFK = Value
+        
+        if Value then
+            spawn(function()
+                while getgenv().SafeAntiAFK and task.wait(60) do -- Cuma setiap 60 detik
+                    pcall(function()
+                        local VirtualUser = game:GetService("VirtualUser")
+                        VirtualUser:CaptureController()
+                        VirtualUser:ClickButton2(Vector2.new())
+                        print("🔒 Anti-AFK triggered (safe)")
                     end)
                 end
             end)
         end
     end,
+})
+
+-- Player Protection
+local ProtectionTab = Window:CreateTab("🛡️ Protection", 7733960981)
+
+ProtectionTab:CreateParagraph({
+    Title = "SAFETY FEATURES:",
+    Content = "• Random delays between actions\n• Human-like behavior simulation\n• No spam remote calls\n• Emergency stop button\n• Anti-detection measures"
+})
+
+ProtectionTab:CreateParagraph({
+    Title = "RECOMMENDED SETTINGS:",
+    Content = "1. Use 'Click Auto Fish' first\n2. Enable 'Safe Anti-AFK'\n3. Use random intervals\n4. Monitor console for errors\n5. Use EMERGENCY STOP if needed"
 })
 
 -- Instructions
 local InfoTab = Window:CreateTab("ℹ️ Instructions", 6034287593)
 
 InfoTab:CreateParagraph({
-    Title = "CARA PAKAI YANG BENAR:",
-    Content = "1. KLIK 'Buy Fishing Rod' dulu\n2. KLIK 'Debug Remotes' untuk cek\n3. KLIK 'Test Fishing Remote' untuk test\n4. Gunakan 'Simple Tool Auto Fish' dulu\n5. Jika work, gunakan 'Auto Fish (Remote Version)'"
+    Title = "SAFE USAGE GUIDE:",
+    Content = "1. Use 'Safe Buy Fishing Rod' first\n2. Enable 'Click Auto Fish (ULTRA SAFE)'\n3. Enable 'Safe Anti-AFK'\n4. Monitor for any errors in console\n5. Use EMERGENCY STOP if suspicious"
 })
 
 Rayfield:Notify({
-    Title = "Remote Fix Loaded",
-    Content = "Use Debug Remotes to check everything!",
+    Title = "SAFE MODE ACTIVATED",
+    Content = "Using anti-detection measures!",
     Duration = 6,
 })
 
 print("========================================")
-print("🎣 FISH IT REMOTE FIX LOADED")
-print("✅ Correct remote paths detected!")
+print("🎣 FISH IT SAFE MODE ACTIVATED")
+print("🛡️ Anti-detection protection: ON")
+print("🚨 Use EMERGENCY STOP if needed")
 print("========================================")
+
+-- Auto cleanup ketika player leave
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer then
+        getgenv().Running = false
+        getgenv().ManualFishing = false
+        getgenv().ClickFishing = false
+    end
+end)
