@@ -29,6 +29,7 @@ function BeeHub.new()
     self.CurrentPage = "Main"
     self.IsMinimized = false
     self.InstantFishingModule = nil
+    self.DragConnections = {}
     
     self:CreateGUI()
     self:MakeDraggable()
@@ -457,7 +458,7 @@ function BeeHub:MakeDraggable()
     local dragging = false
     local dragInput, mousePos, framePos
     
-    self.Header.InputBegan:Connect(function(input)
+    local inputBeganConn = self.Header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             mousePos = input.Position
@@ -471,13 +472,13 @@ function BeeHub:MakeDraggable()
         end
     end)
     
-    self.Header.InputChanged:Connect(function(input)
+    local inputChangedConn = self.Header.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
+    local userInputConn = UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - mousePos
             self.MainContainer.Position = UDim2.new(
@@ -488,9 +489,20 @@ function BeeHub:MakeDraggable()
             )
         end
     end)
+    
+    table.insert(self.DragConnections, inputBeganConn)
+    table.insert(self.DragConnections, inputChangedConn)
+    table.insert(self.DragConnections, userInputConn)
 end
 
 function BeeHub:Destroy()
+    for _, connection in ipairs(self.DragConnections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
+    self.DragConnections = {}
+    
     if self.InstantFishingModule and self.InstantFishingModule.Running then
         self.InstantFishingModule:Stop()
     end
@@ -498,6 +510,14 @@ function BeeHub:Destroy()
     if self.GUI then
         self.GUI:Destroy()
     end
+    
+    self.GUI = nil
+    self.InstantFishingModule = nil
+    self.MainContainer = nil
+    self.Header = nil
+    self.MinimizeButton = nil
+    self.Sidebar = nil
+    self.ContentArea = nil
 end
 
 if _G.BeeHubInstance then
