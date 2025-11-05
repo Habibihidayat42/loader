@@ -1,569 +1,282 @@
--- BeeHubGUI.lua (Honeycomb Edition) - v3
--- Sidebar: Instant Fishing & Instant 2X Speed
--- Sliders update the cores' _G.FishingScript.Settings in real-time
--- When GUI visible: blocks camera & movement inputs (modal)
--- Replace RAW URLs below if you change filenames/paths
+-- 🐝 Bee Hub GUI v3.5 (Honeycomb Unified Edition)
+-- Theme: Honey Gold | Auto-load InstantFishing & Instant2XSpeed cores
+-- Author: HabibiHidayat42
+-- Repo: https://github.com/Habibihidayat42/loader
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ========== CONFIG: raw URLs to your GitHub raw files ==========
 local RAW_BASE = "https://raw.githubusercontent.com/Habibihidayat42/loader/main/FungsiBeeHub/"
-local RAW_INSTANT_FISHING = RAW_BASE .. "InstantFishing.lua"
-local RAW_INSTANT_2X = RAW_BASE .. "Instant2XSpeed.lua"
--- ===============================================================
+local CORES = {
+    InstantFishing = RAW_BASE .. "InstantFishing.lua",
+    Instant2XSpeed = RAW_BASE .. "Instant2XSpeed.lua"
+}
 
--- Theme
+-- 🎯 Fetch core safely
+local function safeFetch(url)
+    local ok, res = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if ok and res and res:find("return") then
+        local fn = loadstring(res)
+        if fn then
+            local ok2, result = pcall(fn)
+            if ok2 then return result end
+        end
+    end
+    return nil
+end
+
+-- 🟡 Colors
 local COLOR_BG = Color3.fromRGB(38, 30, 20)
 local COLOR_PANEL = Color3.fromRGB(255, 200, 60)
 local COLOR_ACCENT = Color3.fromRGB(255, 170, 30)
 local COLOR_TEXT = Color3.fromRGB(20, 12, 6)
-local COLOR_SUB = Color3.fromRGB(220,220,200)
 
--- Fetch helper (tries HttpGet; if your executor doesn't allow, modify to readfile)
-local function fetchRaw(url)
-    local ok, res = pcall(function() return game:HttpGet(url) end)
-    if ok and res and #res > 10 then return res end
-    return nil
-end
-
--- Create ScreenGui
+-- 🐝 GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BeeHubGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Root window
-local window = Instance.new("Frame", screenGui)
+-- 🍯 Window
+local window = Instance.new("Frame")
 window.Name = "BeeHubMain"
 window.Size = UDim2.new(0, 460, 0, 400)
-window.Position = UDim2.new(0, 40, 0, 90)
+window.Position = UDim2.new(0, 40, 0, 120)
 window.BackgroundColor3 = COLOR_BG
 window.BorderSizePixel = 0
 Instance.new("UICorner", window).CornerRadius = UDim.new(0, 12)
+window.Parent = screenGui
 
--- Header (drag)
-local header = Instance.new("Frame", window)
-header.Size = UDim2.new(1, 0, 0, 48)
-header.BackgroundTransparency = 1
-
-local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -48, 1, 0)
-title.Position = UDim2.new(0, 12, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Bee Hub"
-title.TextColor3 = COLOR_PANEL
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.TextXAlignment = Enum.TextXAlignment.Left
-
-local btnMin = Instance.new("TextButton", header)
-btnMin.Size = UDim2.new(0, 36, 0, 36)
-btnMin.Position = UDim2.new(1, -44, 0.5, -18)
-btnMin.BackgroundColor3 = COLOR_PANEL
-btnMin.Text = "-"
-btnMin.TextColor3 = COLOR_TEXT
-btnMin.Font = Enum.Font.GothamBold
-btnMin.TextSize = 18
-Instance.new("UICorner", btnMin).CornerRadius = UDim.new(1, 0)
-
--- Sidebar (left)
+-- 🧭 Sidebar
 local sidebar = Instance.new("Frame", window)
-sidebar.Size = UDim2.new(0, 100, 1, -48)
-sidebar.Position = UDim2.new(0, 0, 0, 48)
-sidebar.BackgroundColor3 = Color3.fromRGB(26,20,12)
+sidebar.Size = UDim2.new(0, 96, 1, 0)
+sidebar.BackgroundColor3 = Color3.fromRGB(26, 20, 12)
 sidebar.BorderSizePixel = 0
-Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0,10)
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 10)
 
-local function makeHoneyBtn(parent, y, label)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0, 68, 0, 68)
-    btn.Position = UDim2.new(0, 16, 0, y)
-    btn.BackgroundColor3 = COLOR_PANEL
-    btn.BorderSizePixel = 0
-    btn.Text = ""
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
-    local inner = Instance.new("TextLabel", btn)
-    inner.Size = UDim2.new(1, -10, 1, -10)
-    inner.Position = UDim2.new(0,5,0,5)
-    inner.BackgroundColor3 = COLOR_ACCENT
-    inner.BorderSizePixel = 0
-    inner.Text = label
-    inner.Font = Enum.Font.GothamBold
-    inner.TextSize = 12
-    inner.TextColor3 = COLOR_TEXT
-    inner.BackgroundTransparency = 0
-    Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 8)
-    return btn
-end
+local title = Instance.new("TextLabel", sidebar)
+title.Size = UDim2.new(1, 0, 0, 48)
+title.Text = "🐝 Bee Hub"
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = COLOR_PANEL
+title.TextSize = 20
+title.BackgroundTransparency = 1
 
-local btnMain = makeHoneyBtn(sidebar, 12, "Instant\nFishing")
-local btn2x   = makeHoneyBtn(sidebar, 96, "Instant\n2X")
-local btnSettings = makeHoneyBtn(sidebar, 180, "Settings")
-
--- Content container
+-- 🪟 Content
 local content = Instance.new("Frame", window)
-content.Size = UDim2.new(1, -100, 1, -48)
-content.Position = UDim2.new(0, 100, 0, 48)
+content.Size = UDim2.new(1, -96, 1, 0)
+content.Position = UDim2.new(0, 96, 0, 0)
 content.BackgroundTransparency = 1
 
--- Pages
-local pages = {}
-local function newPage(name)
-    local f = Instance.new("Frame", content)
-    f.Size = UDim2.new(1,0,1,0)
-    f.BackgroundTransparency = 1
-    f.Visible = false
-    pages[name] = f
-    return f
-end
+-- 🔘 Minimize
+local btnMin = Instance.new("TextButton", sidebar)
+btnMin.Size = UDim2.new(0, 70, 0, 30)
+btnMin.Position = UDim2.new(0, 13, 1, -40)
+btnMin.Text = "MIN"
+btnMin.TextColor3 = COLOR_TEXT
+btnMin.Font = Enum.Font.GothamBold
+btnMin.TextSize = 14
+btnMin.BackgroundColor3 = COLOR_PANEL
+Instance.new("UICorner", btnMin).CornerRadius = UDim.new(1, 0)
 
-local pageMain = newPage("Main")
-local page2x   = newPage("2X")
-local pageSettings = newPage("Settings")
-pages["Main"].Visible = true
-
--- Modal input blocking: function to enable/disable blocking so camera/controls behind GUI don't react
-local CAS = ContextActionService
-local blockActionName = "BeeHubBlockInput"
-local blockInputsList = {
-    Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D,
-    Enum.KeyCode.Up, Enum.KeyCode.Down, Enum.KeyCode.Left, Enum.KeyCode.Right,
-    Enum.KeyCode.Space, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift,
-    Enum.UserInputType.MouseMovement, Enum.UserInputType.Touch, Enum.UserInputType.MouseButton1,
-    Enum.UserInputType.MouseButton2
-}
-local function blockAction(actionName, inputState, inputObject)
-    return Enum.ContextActionResult.Sink
-end
-local modalActive = false
-local function setModal(active)
-    if active and not modalActive then
-        -- Bind all keys and mouse movement to sink
-        CAS:BindAction(blockActionName, blockAction, false, unpack(blockInputsList))
-        modalActive = true
-    elseif not active and modalActive then
-        CAS:UnbindAction(blockActionName)
-        modalActive = false
-    end
-end
-
--- Helper: show a page
-local function showPage(name)
-    for k,v in pairs(pages) do v.Visible = (k == name) end
-    -- enable modal blocking when any page is visible (i.e. window shown)
-    setModal(true)
-end
-
-btnMain.MouseButton1Click:Connect(function() showPage("Main") end)
-btn2x.MouseButton1Click:Connect(function() showPage("2X") end)
-btnSettings.MouseButton1Click:Connect(function() showPage("Settings") end)
-
--- Minimize / restore
-local minimized = false
 local minIcon = Instance.new("TextButton", screenGui)
 minIcon.Size = UDim2.new(0, 56, 0, 56)
-minIcon.Position = UDim2.new(0, 24, 0, 90)
+minIcon.Position = window.Position
 minIcon.BackgroundColor3 = COLOR_PANEL
 minIcon.Text = "🐝"
 minIcon.TextColor3 = COLOR_TEXT
 minIcon.Font = Enum.Font.GothamBold
+minIcon.TextSize = 18
+Instance.new("UICorner", minIcon).CornerRadius = UDim.new(1, 0)
 minIcon.Visible = false
-Instance.new("UICorner", minIcon).CornerRadius = UDim.new(1,0)
 
-btnMin.MouseButton1Click:Connect(function()
-    if not minimized then
-        minimized = true
-        window.Visible = false
-        minIcon.Visible = true
-        setModal(false) -- allow camera when minimized
-    else
-        minimized = false
-        window.Visible = true
-        minIcon.Visible = false
-        setModal(true)
-    end
+local minimized = false
+local function minimize()
+	if minimized then return end
+	minimized = true
+	ContextActionService:UnbindAction("BlockMovement")
+	window.Visible = false
+	minIcon.Visible = true
+end
+local function restore()
+	if not minimized then return end
+	minimized = false
+	minIcon.Visible = false
+	window.Visible = true
+	ContextActionService:BindAction("BlockMovement", function() return Enum.ContextActionResult.Sink end, false,
+		Enum.UserInputType.MouseMovement, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch,
+		Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D)
+end
+btnMin.MouseButton1Click:Connect(minimize)
+minIcon.MouseButton1Click:Connect(restore)
+
+-- 🧲 Modal input lock
+ContextActionService:BindAction("BlockMovement", function() return Enum.ContextActionResult.Sink end, false,
+	Enum.UserInputType.MouseMovement, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch,
+	Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D)
+
+-- 🎮 Draggable
+local dragging, dragStart, startPos
+local function update(input)
+	local delta = input.Position - dragStart
+	window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+window.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = window.Position
+	end
 end)
-minIcon.MouseButton1Click:Connect(function()
-    minimized = false
-    window.Visible = true
-    minIcon.Visible = false
-    setModal(true)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		update(input)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
 end)
 
--- Dragging support (mouse & touch)
-do
-    local dragging=false
-    local dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-    header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = window.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            update(input)
-        end
-    end)
+-- ⚙️ Helper buat slider
+local function createSlider(parent, label, key, min, max, default, y, settingsTable)
+	local frame = Instance.new("Frame", parent)
+	frame.Size = UDim2.new(0, 320, 0, 40)
+	frame.Position = UDim2.new(0, 20, 0, y)
+	frame.BackgroundTransparency = 1
+
+	local text = Instance.new("TextLabel", frame)
+	text.Size = UDim2.new(1, 0, 0, 18)
+	text.Text = label .. ": " .. default
+	text.TextColor3 = Color3.fromRGB(255, 255, 200)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.Gotham
+	text.TextSize = 14
+	text.TextXAlignment = Enum.TextXAlignment.Left
+
+	local bar = Instance.new("Frame", frame)
+	bar.Size = UDim2.new(1, -10, 0, 8)
+	bar.Position = UDim2.new(0, 0, 0, 22)
+	bar.BackgroundColor3 = Color3.fromRGB(80, 60, 30)
+	bar.BorderSizePixel = 0
+	Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
+
+	local fill = Instance.new("Frame", bar)
+	fill.BackgroundColor3 = COLOR_PANEL
+	fill.BorderSizePixel = 0
+	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+
+	local dragging = false
+	local function updateSlider(x)
+		local rel = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+		local val = math.round((min + rel * (max - min)) * 100) / 100
+		fill.Size = UDim2.new(rel, 0, 1, 0)
+		text.Text = label .. ": " .. val
+		settingsTable[key] = val
+	end
+
+	bar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			updateSlider(input.Position.X)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateSlider(input.Position.X)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
 end
 
--- ---------- Page: Main (Instant Fishing) ----------
-do
-    local p = pageMain
-    local title = Instance.new("TextLabel", p)
-    title.Position = UDim2.new(0,12,0,8)
-    title.Size = UDim2.new(1,-24,0,28)
-    title.BackgroundTransparency = 1
-    title.Text = "Instant Fishing"
-    title.TextColor3 = COLOR_PANEL
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextXAlignment = Enum.TextXAlignment.Left
+-- 🌊 Main content
+local mainFrame = Instance.new("Frame", content)
+mainFrame.Size = UDim2.new(1, -20, 1, -20)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundTransparency = 1
 
-    local runBtn = Instance.new("TextButton", p)
-    runBtn.Position = UDim2.new(0,12,0,44)
-    runBtn.Size = UDim2.new(0,200,0,36)
-    runBtn.Text = "RUN InstantFishing (Load Core)"
-    runBtn.Font = Enum.Font.GothamBold
-    runBtn.TextSize = 14
-    runBtn.BackgroundColor3 = COLOR_PANEL
-    runBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", runBtn).CornerRadius = UDim.new(0,8)
+local header = Instance.new("TextLabel", mainFrame)
+header.Size = UDim2.new(1, 0, 0, 24)
+header.Text = "Bee Hub — Unified Fishing Controls"
+header.TextColor3 = COLOR_PANEL
+header.Font = Enum.Font.GothamBold
+header.TextSize = 18
+header.BackgroundTransparency = 1
 
-    local startBtn = Instance.new("TextButton", p)
-    startBtn.Position = UDim2.new(0,220,0,44)
-    startBtn.Size = UDim2.new(0,110,0,36)
-    startBtn.Text = "START"
-    startBtn.Font = Enum.Font.GothamBold
-    startBtn.TextSize = 14
-    startBtn.BackgroundColor3 = Color3.fromRGB(60,200,80)
-    startBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0,8)
+local status = Instance.new("TextLabel", mainFrame)
+status.Position = UDim2.new(0, 0, 0, 26)
+status.Size = UDim2.new(1, 0, 0, 22)
+status.Text = "Loading cores..."
+status.TextColor3 = Color3.fromRGB(255, 255, 200)
+status.Font = Enum.Font.Gotham
+status.TextSize = 14
+status.BackgroundTransparency = 1
+status.TextXAlignment = Enum.TextXAlignment.Left
 
-    local stopBtn = Instance.new("TextButton", p)
-    stopBtn.Position = UDim2.new(0,340,0,44)
-    stopBtn.Size = UDim2.new(0,110,0,36)
-    stopBtn.Text = "STOP"
-    stopBtn.Font = Enum.Font.GothamBold
-    stopBtn.TextSize = 14
-    stopBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
-    stopBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0,8)
+-- 🧩 Load cores automatically
+task.spawn(function()
+	local fishing = safeFetch(CORES.InstantFishing)
+	local speed = safeFetch(CORES.Instant2XSpeed)
 
-    local status = Instance.new("TextLabel", p)
-    status.Position = UDim2.new(0,12,0,88)
-    status.Size = UDim2.new(1,-24,0,28)
-    status.BackgroundTransparency = 1
-    status.Text = "Status: Idle"
-    status.Font = Enum.Font.Gotham
-    status.TextColor3 = COLOR_SUB
-    status.TextXAlignment = Enum.TextXAlignment.Left
+	if fishing then
+		status.Text = "✅ InstantFishing core loaded."
+	else
+		status.Text = "❌ Failed to load InstantFishing.lua"
+	end
+	task.wait(0.2)
+	if speed then
+		status.Text = status.Text .. "\n✅ Instant2XSpeed core loaded."
+	else
+		status.Text = status.Text .. "\n❌ Failed to load Instant2XSpeed.lua"
+	end
 
-    -- slider config for InstantFishing (ke mirror GUI internal)
-    local sliderCfg = {
-        { key="FishingDelay", label="Fishing Delay", min=0.05, max=1.0, default=0.12, y=130 },
-        { key="CancelDelay", label="Cancel Delay", min=0.01, max=0.5, default=0.05, y=190 },
-        { key="HookDelay", label="Hook Delay", min=0.01, max=0.5, default=0.06, y=250 },
-        { key="ChargeToRequestDelay", label="Charge->Request Delay", min=0.0, max=0.2, default=0.05, y=310 },
-        { key="FallbackTimeout", label="Fallback Timeout", min=0.2, max=3.0, default=1.5, y=370 },
-    }
+	if fishing and speed then
+		task.wait(0.5)
+		status.Text = "✅ All cores loaded successfully!"
+	else
+		status.Text = status.Text .. "\n⚠️ Some cores failed."
+	end
+end)
 
-    local sliders = {}
+-- 🎣 Instant Fishing Section
+local IF_label = Instance.new("TextLabel", mainFrame)
+IF_label.Text = "⚡ Instant Fishing"
+IF_label.Font = Enum.Font.GothamBold
+IF_label.TextSize = 16
+IF_label.TextColor3 = COLOR_PANEL
+IF_label.BackgroundTransparency = 1
+IF_label.Position = UDim2.new(0, 0, 0, 60)
+IF_label.Size = UDim2.new(1, 0, 0, 24)
 
-    local function createSlider(parent, cfg)
-        local cont = Instance.new("Frame", parent)
-        cont.Position = UDim2.new(0,12,0,cfg.y)
-        cont.Size = UDim2.new(0,340,0,36)
-        cont.BackgroundTransparency = 1
+local fishingSettings = {}
+createSlider(mainFrame, "Hook Delay", "HookDelay", 0.01, 0.25, 0.06, 86, fishingSettings)
+createSlider(mainFrame, "Fishing Delay", "FishingDelay", 0.05, 1.0, 0.12, 126, fishingSettings)
+createSlider(mainFrame, "Cancel Delay", "CancelDelay", 0.01, 0.25, 0.05, 166, fishingSettings)
 
-        local lbl = Instance.new("TextLabel", cont)
-        lbl.Size = UDim2.new(1,0,0,18)
-        lbl.Position = UDim2.new(0,0,0,0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 13
-        lbl.TextColor3 = COLOR_SUB
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
+-- ⚡ Instant 2X Speed Section
+local S2_label = Instance.new("TextLabel", mainFrame)
+S2_label.Text = "⚡ Instant 2X Speed"
+S2_label.Font = Enum.Font.GothamBold
+S2_label.TextSize = 16
+S2_label.TextColor3 = COLOR_PANEL
+S2_label.BackgroundTransparency = 1
+S2_label.Position = UDim2.new(0, 0, 0, 210)
+S2_label.Size = UDim2.new(1, 0, 0, 24)
 
-        local bar = Instance.new("Frame", cont)
-        bar.Size = UDim2.new(1,0,0,8)
-        bar.Position = UDim2.new(0,0,0,18)
-        bar.BackgroundColor3 = Color3.fromRGB(60,60,80)
-        bar.BorderSizePixel = 0
-        Instance.new("UICorner", bar).CornerRadius = UDim.new(0,4)
+local speedSettings = {}
+createSlider(mainFrame, "Fishing Delay", "FishingDelay", 0.0, 1.0, 0.3, 236, speedSettings)
+createSlider(mainFrame, "Cancel Delay", "CancelDelay", 0.01, 0.2, 0.05, 276, speedSettings)
 
-        local fill = Instance.new("Frame", bar)
-        local rel = (cfg.default - cfg.min) / (cfg.max - cfg.min)
-        fill.Size = UDim2.new(rel,0,1,0)
-        fill.BackgroundColor3 = COLOR_PANEL
-        Instance.new("UICorner", fill).CornerRadius = UDim.new(0,4)
-
-        lbl.Text = string.format("%s: %.2f", cfg.label, cfg.default)
-        cfg.value = cfg.default
-        sliders[cfg.key] = cfg
-
-        local dragging = false
-        bar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                local conn
-                conn = UserInputService.InputChanged:Connect(function(inp)
-                    if not dragging then return end
-                    if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
-                        local relx = math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X,0,1)
-                        fill.Size = UDim2.new(relx,0,1,0)
-                        local v = cfg.min + relx * (cfg.max - cfg.min)
-                        v = math.floor(v*100)/100
-                        cfg.value = v
-                        lbl.Text = string.format("%s: %.2f", cfg.label, v)
-                        -- update core if loaded
-                        if _G.FishingScript and _G.FishingScript.Settings and _G.FishingScript.Settings[cfg.key] ~= nil then
-                            _G.FishingScript.Settings[cfg.key] = v
-                        end
-                    end
-                end)
-                UserInputService.InputEnded:Wait()
-                dragging = false
-                conn:Disconnect()
-            end
-        end)
-    end
-
-    for _,cfg in ipairs(sliderCfg) do createSlider(pageMain, cfg) end
-
-    -- RUN core
-    runBtn.MouseButton1Click:Connect(function()
-        status.Text = "Status: fetching core..."
-        local raw = fetchRaw(RAW_INSTANT_FISHING)
-        if not raw then
-            status.Text = "Status: failed to fetch core (HttpGet blocked?)"
-            return
-        end
-        local ok, res = pcall(function()
-            local fn = loadstring(raw)
-            if not fn then error("loadstring failed") end
-            return fn()
-        end)
-        if ok and res then
-            _G.FishingScript = res
-            -- apply slider values to core Settings
-            for k, cfg in pairs(sliders) do
-                if _G.FishingScript.Settings and _G.FishingScript.Settings[k] ~= nil then
-                    _G.FishingScript.Settings[k] = cfg.value
-                end
-            end
-            status.Text = "Status: core loaded"
-        else
-            status.Text = "Status: core error: "..tostring(res)
-        end
-    end)
-
-    -- Start / Stop buttons call core functions if available
-    startBtn.MouseButton1Click:Connect(function()
-        if _G.FishingScript and type(_G.FishingScript.Start) == "function" then
-            pcall(function() _G.FishingScript.Start() end)
-            status.Text = "Status: running"
-        end
-    end)
-    stopBtn.MouseButton1Click:Connect(function()
-        if _G.FishingScript and type(_G.FishingScript.Stop) == "function" then
-            pcall(function() _G.FishingScript.Stop() end)
-            status.Text = "Status: stopped"
-        end
-    end)
-end
-
--- ---------- Page: Instant 2X ----------
-do
-    local p = page2x
-    local title = Instance.new("TextLabel", p)
-    title.Position = UDim2.new(0,12,0,8)
-    title.Size = UDim2.new(1,-24,0,28)
-    title.BackgroundTransparency = 1
-    title.Text = "Instant 2X Speed"
-    title.TextColor3 = COLOR_PANEL
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextXAlignment = Enum.TextXAlignment.Left
-
-    local runBtn = Instance.new("TextButton", p)
-    runBtn.Position = UDim2.new(0,12,0,44)
-    runBtn.Size = UDim2.new(0,200,0,36)
-    runBtn.Text = "RUN Instant2XSpeed (Load Core)"
-    runBtn.Font = Enum.Font.GothamBold
-    runBtn.TextSize = 14
-    runBtn.BackgroundColor3 = COLOR_PANEL
-    runBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", runBtn).CornerRadius = UDim.new(0,8)
-
-    local startBtn = Instance.new("TextButton", p)
-    startBtn.Position = UDim2.new(0,220,0,44)
-    startBtn.Size = UDim2.new(0,110,0,36)
-    startBtn.Text = "START"
-    startBtn.Font = Enum.Font.GothamBold
-    startBtn.TextSize = 14
-    startBtn.BackgroundColor3 = Color3.fromRGB(60,200,80)
-    startBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0,8)
-
-    local stopBtn = Instance.new("TextButton", p)
-    stopBtn.Position = UDim2.new(0,340,0,44)
-    stopBtn.Size = UDim2.new(0,110,0,36)
-    stopBtn.Text = "STOP"
-    stopBtn.Font = Enum.Font.GothamBold
-    stopBtn.TextSize = 14
-    stopBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
-    stopBtn.TextColor3 = COLOR_TEXT
-    Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0,8)
-
-    local status = Instance.new("TextLabel", p)
-    status.Position = UDim2.new(0,12,0,88)
-    status.Size = UDim2.new(1,-24,0,28)
-    status.BackgroundTransparency = 1
-    status.Text = "Status: Idle"
-    status.Font = Enum.Font.Gotham
-    status.TextColor3 = COLOR_SUB
-    status.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- slider config for 2X
-    local sliderCfg2x = {
-        { key="FishingDelay", label="Fishing Delay", min=0.0, max=1.0, default=0.3, y=130 },
-        { key="CancelDelay", label="Cancel Delay", min=0.01, max=0.25, default=0.05, y=190 },
-    }
-    local sliders2 = {}
-
-    local function createSlider(parent, cfg)
-        local cont = Instance.new("Frame", parent)
-        cont.Position = UDim2.new(0,12,0,cfg.y)
-        cont.Size = UDim2.new(0,340,0,36)
-        cont.BackgroundTransparency = 1
-
-        local lbl = Instance.new("TextLabel", cont)
-        lbl.Size = UDim2.new(1,0,0,18)
-        lbl.Position = UDim2.new(0,0,0,0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 13
-        lbl.TextColor3 = COLOR_SUB
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-        local bar = Instance.new("Frame", cont)
-        bar.Size = UDim2.new(1,0,0,8)
-        bar.Position = UDim2.new(0,0,0,18)
-        bar.BackgroundColor3 = Color3.fromRGB(60,60,80)
-        bar.BorderSizePixel = 0
-        Instance.new("UICorner", bar).CornerRadius = UDim.new(0,4)
-
-        local fill = Instance.new("Frame", bar)
-        local rel = (cfg.default - cfg.min) / (cfg.max - cfg.min)
-        fill.Size = UDim2.new(rel,0,1,0)
-        fill.BackgroundColor3 = COLOR_PANEL
-        Instance.new("UICorner", fill).CornerRadius = UDim.new(0,4)
-
-        lbl.Text = string.format("%s: %.2f", cfg.label, cfg.default)
-        cfg.value = cfg.default
-        sliders2[cfg.key] = cfg
-
-        local dragging = false
-        bar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                local conn
-                conn = UserInputService.InputChanged:Connect(function(inp)
-                    if not dragging then return end
-                    if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
-                        local relx = math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X,0,1)
-                        fill.Size = UDim2.new(relx,0,1,0)
-                        local v = cfg.min + relx * (cfg.max - cfg.min)
-                        v = math.floor(v*100)/100
-                        cfg.value = v
-                        lbl.Text = string.format("%s: %.2f", cfg.label, v)
-                        -- update core if loaded
-                        if _G.FishingScript and _G.FishingScript.Settings and _G.FishingScript.Settings[cfg.key] ~= nil then
-                            _G.FishingScript.Settings[cfg.key] = v
-                        end
-                    end
-                end)
-                UserInputService.InputEnded:Wait()
-                dragging = false
-                conn:Disconnect()
-            end
-        end)
-    end
-
-    for _,cfg in ipairs(sliderCfg2x) do createSlider(page2x, cfg) end
-
-    -- load core
-    runBtn.MouseButton1Click:Connect(function()
-        status.Text = "Status: fetching core..."
-        local raw = fetchRaw(RAW_INSTANT_2X)
-        if not raw then
-            status.Text = "Status: failed to fetch core (HttpGet blocked?)"
-            return
-        end
-        local ok, res = pcall(function()
-            local fn = loadstring(raw)
-            if not fn then error("loadstring failed") end
-            return fn()
-        end)
-        if ok and res then
-            _G.FishingScript = res
-            -- apply slider values to core Settings
-            for k, cfg in pairs(sliders2) do
-                if _G.FishingScript.Settings and _G.FishingScript.Settings[k] ~= nil then
-                    _G.FishingScript.Settings[k] = cfg.value
-                end
-            end
-            status.Text = "Status: core loaded"
-        else
-            status.Text = "Status: core error: "..tostring(res)
-        end
-    end)
-
-    startBtn.MouseButton1Click:Connect(function()
-        if _G.FishingScript and type(_G.FishingScript.Start) == "function" then
-            pcall(function() _G.FishingScript.Start() end)
-            status.Text = "Status: running"
-        end
-    end)
-    stopBtn.MouseButton1Click:Connect(function()
-        if _G.FishingScript and type(_G.FishingScript.Stop) == "function" then
-            pcall(function() _G.FishingScript.Stop() end)
-            status.Text = "Status: stopped"
-        end
-    end)
-end
-
--- Settings page (simple)
-do
-    local p = pageSettings
-    local t = Instance.new("TextLabel", p)
-    t.Position = UDim2.new(0,12,0,12)
-    t.Size = UDim2.new(1,-24,0,120)
-    t.BackgroundTransparency = 1
-    t.Text = "Bee Hub GUI v3\n- Drag window header to move (supports touch)\n- When window open, camera and movement are blocked.\n- Sliders directly write to _G.FishingScript.Settings if core loaded."
-    t.Font = Enum.Font.Gotham
-    t.TextSize = 14
-    t.TextColor3 = COLOR_SUB
-    t.TextWrapped = true
-end
-
--- restore modal when window initially visible
-setModal(true)
-
-print("Bee Hub GUI v3 loaded.")
+print("🐝 Bee Hub v3.5 fully loaded.")
